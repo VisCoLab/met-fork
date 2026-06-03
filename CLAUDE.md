@@ -27,7 +27,90 @@ and [`reference/README.md`](reference/README.md) summarizes the task, methods, t
 tables (numbers to beat), and the crucial `--pairs_type` ⇄ paper-method-name mapping. Read it before
 designing experiments or writing up results.
 
+## HPC environment (PCSS Eagle) — how to run
+
+This repo lives on the **PCSS Eagle** cluster (`eagle.man.poznan.pl`) under grant **`pl0896-03`**, in
+the **backed-up `project_data`** area (`/mnt/storage_6/project_data/pl0896-03/met`). Jobs run under
+**SLURM**. Docs: [Getting Started](https://help.pcss.plcloud.pl/portal/hpc/2%20Getting%20Started/) ·
+[Job Management](https://help.pcss.plcloud.pl/portal/hpc/4%20Job%20Management%20and%20Scheduling/) ·
+[Submitting jobs](https://help.pcss.plcloud.pl/portal/hpc/submit/) ·
+[Data Management](https://help.pcss.plcloud.pl/portal/hpc/5%20Data%20Management%20and%20Transfer/#data-storage-policies).
+
+**Python — ALWAYS a repo-local `.venv`, never the system/bare Python.** Do the heavy setup in an
+interactive session, not on a login node:
+
+```bash
+srun --account=pl0896-03 --time=01:00:00 --mem=8G --pty bash   # get off the login node first
+module avail python                       # then `module load` a Python (+ CUDA for faiss-gpu)
+python -m venv .venv                      # created IN the repo; .venv/ is git-ignored
+source .venv/bin/activate
+pip install --upgrade pip
+pip install torch torchvision numpy faiss-gpu pillow   # no requirements.txt ships with the repo
+```
+
+Every `python -m code.examples.*` command must run inside this activated `.venv`. The system Python
+is shared, minimal, and non-reproducible — do not use it, and do not use conda unless asked.
+
+**Never compute on login nodes** — they are for editing, `git`, and `sbatch`/`srun` only.
+
+**SLURM essentials** (always pass the grant with `--account=pl0896-03`):
+
+| Action | Command |
+|---|---|
+| Interactive GPU shell | `srun --account=pl0896-03 -p <gpu_partition> --gpus-per-node=1 --time=1:00:00 --pty bash` |
+| Submit a batch job | `sbatch train.slurm` |
+| My queue | `squeue -u $USER` |
+| Cancel | `scancel <jobid>` |
+| Post-run efficiency | `seff <jobid>` |
+| GPU usage (on the node) | `nvidia-smi`, `nvtop` |
+
+GPU partitions referenced in the docs: `tesla` (with `--constraint=v100`/`h100`) and
+`proxima`/`proxima-cpu`. **Confirm which partition + constraint your grant may use** (portal/docs)
+before relying on a name.
+
+**Example batch script** (`train.slurm`) — single-GPU contrastive training:
+
+```bash
+#!/bin/bash
+#SBATCH --account=pl0896-03
+#SBATCH --partition=tesla          # confirm the partition available to the grant
+#SBATCH --gpus-per-node=1
+#SBATCH --constraint=v100          # or h100
+#SBATCH --cpus-per-task=8          # dataloaders use num_workers=8
+#SBATCH --mem=32G
+#SBATCH --time=24:00:00
+#SBATCH --output=%x-%j.out         # log lands in the submit dir (git-ignored)
+
+cd "$SLURM_SUBMIT_DIR"
+source .venv/bin/activate
+python -m code.examples.train_contrastive ./data/models/r18SWSL_con-syn+real-closest \
+    --seed 0 --pretrained --pairs_type new_pos+new_neg --emb_proj --pca \
+    --info_dir ./data/ground_truth --im_root ./data/ --gpuid 0
+```
+
+Submit with `sbatch train.slurm`. `--gpuid 0` is correct: with a one-GPU allocation SLURM exposes the
+granted GPU as device 0 inside the job (the code sets `CUDA_VISIBLE_DEVICES` from `--gpuid`).
+
+**Storage policy** (quota-managed; see [Data Management]):
+
+- **`$HOME` — 1 GB only**, a "bag" of symlinks to grant dirs. Never put data, the venv, or
+  checkpoints here.
+- **`project_data`** (this repo): shared, **backed up**, guaranteed by the grant, kept 6 months after
+  it ends. Good for code, the `.venv`, and final checkpoints. Deletions linger in
+  `.recyclebininternal` ~7 days and still count toward quota.
+- **`scratch`** (`$HOME/grant_$SLURM_JOB_ACCOUNT/scratch/$USER/$SLURM_JOB_ID`): large, **not** backed
+  up — stage the dataset and write job I/O here.
+- **`archive`**: slow, very large; for inactive/processed results.
+- **Node-local NVMe** on proxima (`/mnt/local`, request `--constraint=local_ssd --tmp=<size>`): fastest
+  for the Met images (heavy random small-file reads); auto-wiped at job end, so copy data in at start.
+
+**Data transfer:** `rsync`/`scp` from a login/interactive node, or
+`rclone copy <src> <dst> --progress --multi-thread-streams=8` (≤8 streams) for large parallel copies.
+
 ## Running code
+
+> **Run every command below inside the repo-local `.venv`, on a compute node via SLURM — never the
+> system Python and never on a login node (see [HPC environment](#hpc-environment-pcss-eagle--how-to-run)).**
 
 All scripts are run as **Python modules from the repository root** (the directory containing `code/`), because every file uses absolute imports rooted at `code.` (e.g. `from code.utils.train_utils import *`). Running a script by path (`python code/examples/knn_eval.py`) will fail with import errors.
 
@@ -49,9 +132,56 @@ python -m code.examples.<script> -h
 
 **Prerequisites** (no `requirements.txt` exists): Python 3, NumPy, PyTorch, torchvision, `faiss-gpu`, PIL. A **CUDA GPU is mandatory** — training, descriptor extraction, and the faiss kNN index all call `.cuda()` unconditionally, and each script sets `CUDA_VISIBLE_DEVICES` from `--gpuid`.
 
-**Data is not in the repo.** It is downloaded separately from the [official site](http://cmp.felk.cvut.cz/met/). Scripts expect:
-- `--info_dir`: ground-truth JSONs — `MET_database.json` (+ `mini_MET_database.json`), `testset.json`, `valset.json`.
-- `--im_root`: image root; images are read from `<im_root>/images/<path>`. If `--im_root` is omitted, the image root defaults to the parent of `--info_dir`.
+**Data is already downloaded** (full layout, schema, and the `images/` path gotcha are in the
+[Dataset](#dataset-local-copy-on-eagle) section below). It lives at
+`/mnt/storage_6/project_data/pl0896-03/met-dataset` and is wired into the repo via git-ignored
+`data/` symlinks, so the `--info_dir ./data/ground_truth --im_root ./data/` flags in the commands
+above work as written: `--info_dir` must contain the GT JSONs, and `--im_root` is the image root from
+which the loaders read `<im_root>/images/<path>`.
+
+## Dataset (local copy on Eagle)
+
+The Met dataset is **already downloaded** to `/mnt/storage_6/project_data/pl0896-03/met-dataset`
+(also reachable as `~/pl0896-03/project_data/met-dataset`; on backed-up `project_data`, ≈32 GB).
+It is **not** committed to the repo. Layout:
+
+```
+met-dataset/
+├── MET/<class_id>/<n>.jpg   # 224,408 class folders; 397,121 exhibit (training) images, 1–10 per class, named 0.jpg…
+├── test_met/<hash>.jpg      #  1,132 Met query photos (visitor photos of exhibits)
+├── test_other/<hash>.jpg    # 11,520 other-artwork distractor queries
+├── test_noart/<hash>.jpg    #  8,832 non-artwork distractor queries
+├── MET_database.json        # training GT      — 397,121 entries
+├── mini_MET_database.json   # mini training GT —  38,307 entries / 33,501 classes (use with --mini)
+├── testset.json             # test query GT    —  19,319 = 1,003 met + 10,352 other + 7,964 noart
+└── valset.json              # val query GT     —   2,165 =   129 met +  1,168 other +   868 noart
+```
+
+The three `test_*/` folders physically hold **both** val and test images; the val/test split is
+defined solely by which JSON lists each file. All images are `.jpg` (≤500×500).
+
+**Ground-truth JSON schema** (each file is a JSON array of objects):
+- `MET_database.json` / `mini_MET_database.json`: `{"id": <class_id int>, "path": "MET/<id>/<n>.jpg"}`.
+- `testset.json` / `valset.json`: `{"path": "test_*/<hash>.jpg", ...}`. Met queries carry
+  `"MET_id": <class_id>` (+ `photographer`, `url`); **distractors have no `MET_id`** (they carry a
+  Wikimedia `category` + `url`) and are mapped to label **`-1`** by `MET_queries`.
+
+**⚠️ Path gotcha + wiring.** The JSON `path` values have **no `images/` segment**, but the loaders
+build `<im_root>/images/<path>` (`code/utils/datasets.py`). Two repo-local symlinks (already created
+under git-ignored `data/`) bridge this so the documented commands run unchanged:
+
+```
+data/images       -> /mnt/storage_6/project_data/pl0896-03/met-dataset   # → data/images/MET/34/0.jpg ✓
+data/ground_truth -> /mnt/storage_6/project_data/pl0896-03/met-dataset   # → data/ground_truth/MET_database.json ✓
+```
+
+Hence `--im_root ./data/ --info_dir ./data/ground_truth`. If the symlinks ever go missing, recreate:
+`ln -sfn /mnt/storage_6/project_data/pl0896-03/met-dataset data/images` (likewise `data/ground_truth`).
+
+**Performance:** training/extraction does heavy random small-file reads over ~397k JPEGs. Reading
+straight from `project_data` works, but for real runs stage the dataset onto **node-local NVMe**
+(`/mnt/local`, `--constraint=local_ssd --tmp=<size>`) or `scratch` and repoint the symlinks there —
+see the HPC storage notes above.
 
 ## Architecture
 

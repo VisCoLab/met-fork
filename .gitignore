@@ -166,3 +166,7 @@ cython_debug/
 
 # Dataset, model checkpoints, and extracted descriptors are large and downloaded separately.
 /data/
+
+# SLURM job logs (e.g. from #SBATCH --output=%x-%j.out)
+*.out
+slurm-*.out
