@@ -18,10 +18,13 @@ class KNN_Classifier():
 
 	def fit(self, train_descrs, train_labels):
 
-		res = faiss.StandardGpuResources()  # use a single GPU
+		# GPU faiss disabled: the prebuilt faiss-gpu-cu12 wheel ships no H100/sm_90 kernels
+		# (CUDA error 209). CPU IndexFlatIP gives identical exact inner-product results.
+		# To re-enable on a supported GPU, restore the two commented lines below.
+		# res = faiss.StandardGpuResources()  # use a single GPU
 
 		self.index = faiss.IndexFlatIP(np.shape(train_descrs)[1])
-		self.index = faiss.index_cpu_to_gpu(res, 0, self.index)
+		# self.index = faiss.index_cpu_to_gpu(res, 0, self.index)
 		self.index.add(train_descrs)
 
 		self.train_labels = train_labels

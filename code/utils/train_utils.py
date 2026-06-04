@@ -140,11 +140,13 @@ def mine_negatives(image_paths,root,image_descrs,image_labels):
 
 	image_descrs = np.ascontiguousarray(image_descrs,dtype=np.float32)
 	
-	res = faiss.StandardGpuResources()
+	# GPU faiss disabled: prebuilt faiss-gpu-cu12 wheel lacks H100/sm_90 kernels.
+	# CPU IndexFlatIP gives identical exact inner-product results (just slower mining).
+	# res = faiss.StandardGpuResources()
 
 	index = faiss.IndexFlatIP(np.shape(image_descrs)[1])
-	index = faiss.index_cpu_to_gpu(res, 0, index)
-	
+	# index = faiss.index_cpu_to_gpu(res, 0, index)
+
 	index.add(image_descrs.astype("float32"))
 
 	#find top 25 neighbors

@@ -36,20 +36,19 @@ the **backed-up `project_data`** area (`/mnt/storage_6/project_data/pl0896-03/me
 [Submitting jobs](https://help.pcss.plcloud.pl/portal/hpc/submit/) ·
 [Data Management](https://help.pcss.plcloud.pl/portal/hpc/5%20Data%20Management%20and%20Transfer/#data-storage-policies).
 
-**Python — ALWAYS a repo-local `.venv`, never the system/bare Python.** Do the heavy setup in an
-interactive session, not on a login node:
+**Python — ALWAYS a repo-local `.venv`, never the system/bare Python.** Proven build recipe (pip
+downloads are fine on a login node; GPU-smoke-test on a `tesla` node afterwards):
 
 ```bash
-srun --account=pl0896-03 --time=01:00:00 --mem=8G --pty bash   # get off the login node first
-module avail python                       # then `module load` a Python (+ CUDA for faiss-gpu)
-python -m venv .venv                      # created IN the repo; .venv/ is git-ignored
-source .venv/bin/activate
-pip install --upgrade pip
-pip install torch torchvision numpy faiss-gpu pillow   # no requirements.txt ships with the repo
+python3 -m venv --without-pip .venv     # py3.9 base (faiss-gpu has no 3.13 wheels); ensurepip is broken here
+curl -sS https://bootstrap.pypa.io/pip/3.9/get-pip.py | .venv/bin/python -    # bootstrap pip
+.venv/bin/pip install torch torchvision faiss-gpu-cu12 numpy pillow           # -> torch 2.8.0+cu128
 ```
 
-Every `python -m code.examples.*` command must run inside this activated `.venv`. The system Python
-is shared, minimal, and non-reproducible — do not use it, and do not use conda unless asked.
+Every `python -m code.examples.*` command runs via `.venv/bin/python` (no system Python; no conda
+unless asked). **faiss runs on CPU here** — the prebuilt `faiss-gpu` wheel lacks H100/sm_90 kernels,
+so the GPU-index lines in `knn_classifier.py`/`train_utils.py` are commented out (identical exact-IP
+results). The full proven recipe + results are in [`EXPERIMENTS.md`](EXPERIMENTS.md).
 
 **Never compute on login nodes** — they are for editing, `git`, and `sbatch`/`srun` only.
 
@@ -64,32 +63,34 @@ is shared, minimal, and non-reproducible — do not use it, and do not use conda
 | Post-run efficiency | `seff <jobid>` |
 | GPU usage (on the node) | `nvidia-smi`, `nvtop` |
 
-GPU partitions referenced in the docs: `tesla` (with `--constraint=v100`/`h100`) and
-`proxima`/`proxima-cpu`. **Confirm which partition + constraint your grant may use** (portal/docs)
-before relying on a name.
+GPU jobs for grant `pl0896-03` (QOS `normal,tesla`) go to **`--partition=tesla`**; choose the GPU by
+**GRES type** — `--gres=gpu:h100:1` (H100, fast/plentiful) or `--gres=gpu:tesla:1` (V100) — **not**
+`--constraint`. CPU-only jobs → `--partition=standard`. (`proxima` is not in this grant's QOS.)
 
-**Example batch script** (`train.slurm`) — single-GPU contrastive training:
+The committed **[`train.slurm`](train.slurm)** reproduces the paper's best single model (R18-SWSL
+Con-Syn+Real-closest, target **GAP 36.1**):
 
 ```bash
 #!/bin/bash
 #SBATCH --account=pl0896-03
-#SBATCH --partition=tesla          # confirm the partition available to the grant
-#SBATCH --gpus-per-node=1
-#SBATCH --constraint=v100          # or h100
-#SBATCH --cpus-per-task=8          # dataloaders use num_workers=8
-#SBATCH --mem=32G
-#SBATCH --time=24:00:00
-#SBATCH --output=%x-%j.out         # log lands in the submit dir (git-ignored)
+#SBATCH --partition=tesla
+#SBATCH --gres=gpu:h100:1           # GPU by GRES type, NOT --constraint
+#SBATCH --cpus-per-task=16          # 8 dataloader workers + CPU-faiss threads
+#SBATCH --mem=48G
+#SBATCH --time=3-00:00:00           # checkpoints every epoch; resume with --resume
+#SBATCH --output=logs/%x-%j.out
 
-cd "$SLURM_SUBMIT_DIR"
-source .venv/bin/activate
-python -m code.examples.train_contrastive ./data/models/r18SWSL_con-syn+real-closest \
-    --seed 0 --pretrained --pairs_type new_pos+new_neg --emb_proj --pca \
-    --info_dir ./data/ground_truth --im_root ./data/ --gpuid 0
+cd "$SLURM_SUBMIT_DIR"; mkdir -p logs data/models
+export TORCH_HOME="$SLURM_SUBMIT_DIR/data/torch_home"   # cached SWSL weights -> offline
+.venv/bin/python -m code.examples.train_contrastive ./data/models/r18SWSL_con-syn+real-closest \
+    --net r18_sw-sup --pretrained --pairs_type new_pos+new_neg --emb_proj --pca \
+    --seed 0 --info_dir ./data/ground_truth --im_root ./data/ --gpuid 0
 ```
 
-Submit with `sbatch train.slurm`. `--gpuid 0` is correct: with a one-GPU allocation SLURM exposes the
-granted GPU as device 0 inside the job (the code sets `CUDA_VISIBLE_DEVICES` from `--gpuid`).
+**`--net r18_sw-sup` is required** for the SWSL model (GAP 36.1) — the default `resnet18` trains the
+ImageNet model (GAP 32.5). `--gpuid 0` is correct: SLURM exposes the one granted GPU as device 0 (the
+code sets `CUDA_VISIBLE_DEVICES` from `--gpuid`). Submit with `sbatch train.slurm`. **Eval needs the
+full K-grid** — see [`EXPERIMENTS.md`](EXPERIMENTS.md), not the README's `knn_eval --autotune`.
 
 **Storage policy** (quota-managed; see [Data Management]):
 
