@@ -93,7 +93,7 @@ def main():
 		if network_variant == 'r18_contr_loss_gem':
 			model = siamese_network("resnet18",pooling = "gem",pretrained = False)
 			print("loading weights from checkpoint")
-			model.load_state_dict(torch.load(args.netpath)['state_dict'])
+			model.load_state_dict(torch.load(args.netpath, weights_only=False)['state_dict'])
 			net = model.backbone
 
 		elif network_variant == 'r18_contr_loss_gem_fc':
@@ -101,7 +101,7 @@ def main():
 				emb_proj = True)
 			model.backbone.projector.bias.data = model.backbone.projector.bias.data.unsqueeze(0)
 			print("loading weights from checkpoint")
-			model.load_state_dict(torch.load(args.netpath)['state_dict'])
+			model.load_state_dict(torch.load(args.netpath, weights_only=False)['state_dict'])
 			net = model.backbone
 
 		elif network_variant == 'r18_contr_loss_gem_fc_swsl':
@@ -109,7 +109,7 @@ def main():
 				emb_proj = True)
 			model.backbone.projector.bias.data = model.backbone.projector.bias.data.unsqueeze(0)
 			print("loading weights from checkpoint")
-			model.load_state_dict(torch.load(args.netpath)['state_dict'])
+			model.load_state_dict(torch.load(args.netpath, weights_only=False)['state_dict'])
 			net = model.backbone
 			
 		else:

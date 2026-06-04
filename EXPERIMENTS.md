@@ -11,7 +11,7 @@ _Last updated: 2026-06-04._
 | Step | What | State |
 |---|---|---|
 | Eval pipeline | Validate our eval reproduces the paper | ✅ **Done — GAP 36.10 / GAP⁻ 52.41 / ACC 55.03** on authors' descriptors |
-| 1 | Reproduce best result from scratch (full benchmark) | 🟡 Training (job 7313742, epoch 10/10); extract+eval pending |
+| 1 | Reproduce best result from scratch (full benchmark) | ✅ **Done — GAP 35.97 / GAP⁻ 52.14 / ACC 54.64** (epoch 10, K=7 τ=50; matches paper 36.1) |
 | 2 | Same model, test only on paintings | ⬜ Not started (173 strict / 221 broad painting test queries) |
 | 3 | Same model, test on synthetic images | ⬜ Blocked on synthetic set (location/count/labels TBD) |
 | 4 | Train from scratch on paintings only, test on paintings | ⬜ Not started (train 5,143 cls / 12,955 imgs strict) |
@@ -44,7 +44,7 @@ _Last updated: 2026-06-04._
 - **Result:** **GAP 36.10 / GAP⁻ 52.41 / ACC 55.03** (best **K=10, τ=50**). Matches paper (36.1 / 52.4 / 55.0) ✓.
 - **Lesson:** `knn_eval.py --autotune` defaults `--k 1` and only tunes τ → degenerate τ=500, **GAP ≈ 23**. Must sweep the full K grid; `eval_fullgrid.py` does this. ACC is unaffected by the bug (matched 55.0 either way).
 
-### EXP-1 — step 1, from-scratch reproduction 🟡
+### EXP-1 — step 1, from-scratch reproduction ✅
 - **Submit:** `sbatch train.slurm` → job **7313742** (H100 `gpu13`).
 - **Exact settings** (R18-SWSL Con-Syn+Real-closest):
   ```
@@ -54,9 +54,12 @@ _Last updated: 2026-06-04._
   ```
   Paper-matching defaults (implicit): 64 pairs/batch (=128 imgs), 10 epochs, margin 1.8, backbone_lr 1e-7, sched step 6 ×0.1, wdecay 1e-6, imsize 500.
   **`--net r18_sw-sup` is required** — without it the default `resnet18` trains the ImageNet model (GAP 32.5), not SWSL (36.1).
-- **Training-progress val GAP⁻** (single-scale, no-PCAw, K=1 — quick metric, not comparable to tuned test GAP): e1 .502, e2 .503, e3 .519, e4 .512, e5 .524, e6 .479, e7 .529, e8 .536, **e9 .544**, e10 pending. Trending up.
+- **Training-progress val GAP⁻** (single-scale, no-PCAw, K=1 — quick metric, not comparable to tuned test GAP): e1 .502, e2 .503, e3 .519, e4 .512, e5 .524, e6 .479, e7 .529, e8 .536, e9 .544, **e10 .544** (best). Converged cleanly (LR ×0.1 at epoch 6).
 - **Checkpoints:** `data/models/r18SWSL_con-syn+real-closest/method:_..._epoch:_N` (epochs 1–9 saved; per-epoch `train_descriptors_epoch:_N.pkl` too).
-- **Result:** pending (extract + eval after epoch 10).
+- **Training:** COMPLETED (job 7313742, 10 epochs, 21h36m); best epoch **10**.
+- **Extract + eval:** job 7318393 (`extract_eval.slurm`, 1h11m) — multi-scale descriptors from epoch 10 → `data/descriptors/r18_contr_loss_gem_fc_swsl_ms/` → `eval_fullgrid.py` (best **K=7, τ=50**).
+- **Result — our from-scratch reproduction: GAP 35.97 / GAP⁻ 52.14 / ACC 54.64** vs paper 36.1 / 52.4 / 55.0 (authors' descriptors 36.10 / 52.41 / 55.03). Reproduced within training variance. ✅ **Step 1 done.**
+- Needed a torch-2.8 fix: `extract_descriptors.py` `torch.load(..., weights_only=False)` (checkpoint stores a numpy scalar).
 
 ## How to finish step 1 (after training completes)
 
