@@ -34,13 +34,13 @@ _Last updated: 2026-06-04._
 
 - Dataset (already downloaded): `/mnt/storage_6/project_data/pl0896-03/met-dataset` (397,121 train imgs / 224,408 classes; test 19,319 = 1,003 Met + 10,352 other-art + 7,964 non-art; val 2,165). Full layout/schema in `CLAUDE.md` → "Dataset".
 - Wired via git-ignored symlinks `data/images` and `data/ground_truth` (both → the dataset dir) ⇒ run with `--im_root ./data/ --info_dir ./data/ground_truth`. (JSON `path` has no `images/` segment but the loaders prepend it — that's why the symlink is named `images`.)
-- Composition: paintings ≈ **5,143** classes (strict) / 7,310 (broad) — only ~3% of classes, but **~17–22% of scored Met test queries** (173 strict / 221 broad of 1,003). Reproduce with `data/count_paintings.py`. **Val has only 2 painting queries** → a paintings-only experiment can't tune k,τ on val.
+- Composition: paintings ≈ **5,143** classes (strict) / 7,310 (broad) — only ~3% of classes, but **~17–22% of scored Met test queries** (173 strict / 221 broad of 1,003). Reproduce with `scripts/count_paintings.py`. **Val has only 2 painting queries** → a paintings-only experiment can't tune k,τ on val.
 
 ## Experiment log
 
 ### EXP-0 — eval pipeline validation (authors' released descriptors) ✅
 - **Input:** authors' `r18SWSL_con-syn+real-closest` descriptors → `data/authors/descriptors/descriptors.pkl` (also checkpoint at `data/authors/models/r18SWSL_con-syn+real-closest`).
-- **Command:** `.venv/bin/python data/eval_fullgrid.py data/authors/descriptors data/ground_truth 512`
+- **Command:** `.venv/bin/python scripts/eval_fullgrid.py data/authors/descriptors data/ground_truth 512`
 - **Result:** **GAP 36.10 / GAP⁻ 52.41 / ACC 55.03** (best **K=10, τ=50**). Matches paper (36.1 / 52.4 / 55.0) ✓.
 - **Lesson:** `knn_eval.py --autotune` defaults `--k 1` and only tunes τ → degenerate τ=500, **GAP ≈ 23**. Must sweep the full K grid; `eval_fullgrid.py` does this. ACC is unaffected by the bug (matched 55.0 either way).
 
@@ -74,7 +74,7 @@ _Last updated: 2026-06-04._
    ```
 3. Eval with the full grid (CPU node):
    ```bash
-   .venv/bin/python data/eval_fullgrid.py data/descriptors/r18_contr_loss_gem_fc_swsl_ms data/ground_truth 512
+   .venv/bin/python scripts/eval_fullgrid.py data/descriptors/r18_contr_loss_gem_fc_swsl_ms data/ground_truth 512
    ```
    Target ≈ GAP 36 / GAP⁻ 52 / ACC 55.
 
@@ -85,12 +85,18 @@ _Last updated: 2026-06-04._
 - GPU = `--gres=gpu:h100:1` on `tesla` (not `--constraint`).
 - Authors' artifacts live under `data/authors/` (kept separate from our run's `data/models/`).
 
-## Repo artifacts (all under git-ignored `data/` unless noted)
-- `train.slurm` (tracked) — step-1 training job.
-- `data/eval_fullgrid.py` — full-K-grid eval (use for every model).
-- `data/count_paintings.py` — painting counts via Met Open Access join.
-- `data/smoke_gpu.py` — GPU/faiss env smoke test.
-- `data/authors/` — authors' checkpoint + descriptors.
-- `data/torch_home/` — cached SWSL weights.
+## Repo artifacts
+
+**Tracked (in git):**
+- `train.slurm`, `extract_eval.slurm` — SLURM jobs (train; extract+eval).
+- `scripts/eval_fullgrid.py` — full-K-grid eval (use for every model).
+- `scripts/count_paintings.py` — painting counts via Met Open Access join.
+- `scripts/smoke_gpu.py` — GPU + CPU-faiss env smoke test.
+- `reference/README.md` — targets-to-beat tables + method↔`pairs_type` mapping.
+
+**Local only (git-ignored `data/`):**
+- `data/images`, `data/ground_truth` — symlinks to the dataset.
+- `data/models/r18SWSL_con-syn+real-closest/` — our checkpoints + per-epoch descriptors.
+- `data/descriptors/r18_contr_loss_gem_fc_swsl_ms/` — our extracted eval descriptors.
+- `data/authors/` — authors' checkpoint + descriptors. `data/torch_home/` — cached SWSL weights.
 - `data/MetObjects.csv` — Met Open Access metadata (~303 MB).
-- Targets-to-beat tables + method↔`pairs_type` mapping: `reference/README.md`.

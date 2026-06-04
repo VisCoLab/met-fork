@@ -90,7 +90,8 @@ export TORCH_HOME="$SLURM_SUBMIT_DIR/data/torch_home"   # cached SWSL weights ->
 **`--net r18_sw-sup` is required** for the SWSL model (GAP 36.1) — the default `resnet18` trains the
 ImageNet model (GAP 32.5). `--gpuid 0` is correct: SLURM exposes the one granted GPU as device 0 (the
 code sets `CUDA_VISIBLE_DEVICES` from `--gpuid`). Submit with `sbatch train.slurm`. **Eval needs the
-full K-grid** — see [`EXPERIMENTS.md`](EXPERIMENTS.md), not the README's `knn_eval --autotune`.
+full K-grid** — via [`scripts/eval_fullgrid.py`](scripts/eval_fullgrid.py) (the README's `knn_eval --autotune`
+under-tunes — it only sweeps τ at K=1) — see [`EXPERIMENTS.md`](EXPERIMENTS.md).
 
 **Storage policy** (quota-managed; see [Data Management]):
 

@@ -25,6 +25,6 @@ echo "=== extract multi-scale descriptors (epoch 10) ==="
     --info_dir data/ground_truth --im_root data/ --gpuid 0
 
 echo "=== eval (full K x tau grid) ==="
-.venv/bin/python data/eval_fullgrid.py data/descriptors/r18_contr_loss_gem_fc_swsl_ms data/ground_truth 512
+.venv/bin/python scripts/eval_fullgrid.py data/descriptors/r18_contr_loss_gem_fc_swsl_ms data/ground_truth 512
 
 echo "end=$(date)"
