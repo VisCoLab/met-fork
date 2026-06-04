@@ -12,7 +12,7 @@ _Last updated: 2026-06-04._
 |---|---|---|
 | Eval pipeline | Validate our eval reproduces the paper | ✅ **Done — GAP 36.10 / GAP⁻ 52.41 / ACC 55.03** on authors' descriptors |
 | 1 | Reproduce best result from scratch (full benchmark) | ✅ **Done — GAP 35.97 / GAP⁻ 52.14 / ACC 54.64** (epoch 10, K=7 τ=50; matches paper 36.1) |
-| 2 | Same model, test only on paintings | ⬜ Not started (173 strict / 221 broad painting test queries) |
+| 2 | Same model, test only on paintings | ✅ **Done** — strict (173 q): GAP⁻ 67.81 / ACC 69.36 (no distr), GAP 41.45 (+all distr) |
 | 3 | Same model, test on synthetic images | ⬜ Blocked on synthetic set (location/count/labels TBD) |
 | 4 | Train from scratch on paintings only, test on paintings | ⬜ Not started (train 5,143 cls / 12,955 imgs strict) |
 | 5 | New method | ⬜ TBD |
@@ -60,6 +60,17 @@ _Last updated: 2026-06-04._
 - **Extract + eval:** job 7318393 (`extract_eval.slurm`, 1h11m) — multi-scale descriptors from epoch 10 → `data/descriptors/r18_contr_loss_gem_fc_swsl_ms/` → `eval_fullgrid.py` (best **K=7, τ=50**).
 - **Result — our from-scratch reproduction: GAP 35.97 / GAP⁻ 52.14 / ACC 54.64** vs paper 36.1 / 52.4 / 55.0 (authors' descriptors 36.10 / 52.41 / 55.03). Reproduced within training variance. ✅ **Step 1 done.**
 - Needed a torch-2.8 fix: `extract_descriptors.py` `torch.load(..., weights_only=False)` (checkpoint stores a numpy scalar).
+
+### EXP-2 — step 2, paintings-only test ✅
+Same model (our step-1 descriptors), reusing tuned **K=7, τ=50** (val has only 2 paintings → can't retune). Run: `scripts/eval_paintings.py`.
+
+| queries | GAP (+all 18,316 distractors) | GAP⁻ (no distr) | ACC |
+|---|---|---|---|
+| full test (1,003 Met) | 35.97 | 52.14 | 54.64 |
+| **strict paintings (173)** | **41.45** | **67.81** | **69.36** |
+| broad paintings (221) | 41.83 | 65.92 | 67.42 |
+
+**Takeaway:** the model recognizes paintings markedly better than the average Met query (ACC 69% vs 55%, GAP⁻ 68% vs 52%) — paintings are the tractable, high-value subset. This is the **paintings-only baseline** that steps 3–4 (synthetic data; paintings-only training) must beat. No paper number exists for this subset — it's our own measurement.
 
 ## How to finish step 1 (after training completes)
 
