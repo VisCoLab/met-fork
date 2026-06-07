@@ -32,6 +32,8 @@ The possible types of pairs are the following:
 - (synthetic positive,hard negative) : corresponds to pairs_type == sim_siam_pos+new_neg
 - (synthetic + real positive,hard negative) : corresponds to pairs_type == pos+new_neg
 - (synthetic + real closest positive,hard negative) : corresponds to pairs_type == new_pos+new_neg
+- (closest cross-domain studio<->synthetic positive,hard negative) : pairs_type == cross_domain_pos+new_neg
+      (VISART step 5; needs the combined studio+synthetic manifest, --info_dir data/gt_aug)
 
 '''
 

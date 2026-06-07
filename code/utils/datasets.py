@@ -247,6 +247,9 @@ class MET_pairs_dataset(VisionDataset):
         elif self.pairs_type == "sim_siam_pos+new_neg":
             return len(self.samples) + len(self.samples)
 
+        elif self.pairs_type == "cross_domain_pos+new_neg":
+            return len(self.samples) + len(self.samples)
+
 
     def create_epoch_pairs(self,train_descr = None):
 
@@ -304,11 +307,47 @@ class MET_pairs_dataset(VisionDataset):
                     self.pair_targets.append(1)
 
 
+        #cross-domain positives (VISART step 5): pair each anchor with the CLOSEST same-class
+        #sample in the OTHER domain (studio<->synthetic), directly optimizing the studio->gallery
+        #-photo bridge. Only painting classes have synthetic renders (path prefix "SYNTH/"); any
+        #class with no cross-domain partner falls back to the standard closest-same-class positive
+        #(== new_pos). Mining the *closest* cross-domain render also naturally avoids the broken
+        #grazing-view renders (they sit far from the studio image, so they're rarely picked).
+        #Requires the combined studio+synthetic manifest (--info_dir data/gt_aug).
+        if self.pairs_type == "cross_domain_pos+new_neg":
+
+            class_idx_dict = create_class_idx_dict(self.targets2)
+            is_synth = np.array([str(p).startswith("SYNTH") for p in self.samples2])
+            n_cross = 0
+
+            for i,sample in enumerate(self.samples2):
+
+                same_class_sample_idxs = class_idx_dict[self.targets2[i]]
+                cross_idxs = same_class_sample_idxs[is_synth[same_class_sample_idxs] != is_synth[i]]
+
+                if len(cross_idxs) >= 1:                       #closest cross-domain (studio<->synth)
+                    index2 = mine_positive(i,cross_idxs,train_descr)
+                    n_cross += 1
+
+                elif len(same_class_sample_idxs) == 1:         #no partner at all -> self-pair
+                    self.pairs.append((sample,sample))
+                    self.pair_targets.append(1)
+                    continue
+
+                else:                                          #no cross-domain -> closest same-class real
+                    index2 = mine_positive(i,same_class_sample_idxs,train_descr)
+
+                self.pairs.append((sample,self.samples2[index2]))
+                self.pair_targets.append(1)
+
+            print("cross-domain positive pairs: "+str(n_cross)+" / "+str(len(self.samples2)))
+
+
         print("number of positive pairs created: " + str(len(self.pairs)))
 
 
         #negative pairs
-        if self.pairs_type == "pos+new_neg" or self.pairs_type == "new_pos+new_neg" or self.pairs_type == "sim_siam_pos+new_neg":
+        if self.pairs_type == "pos+new_neg" or self.pairs_type == "new_pos+new_neg" or self.pairs_type == "sim_siam_pos+new_neg" or self.pairs_type == "cross_domain_pos+new_neg":
 
             print("creating negative pairs")
 

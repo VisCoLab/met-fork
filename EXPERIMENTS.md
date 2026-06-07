@@ -15,7 +15,7 @@ _Last updated: 2026-06-07._
 | 2 | Same model, test only on paintings | ✅ strict GAP⁻ 67.81 / ACC 69.36 |
 | 3 | Same model, retrieve synthetic gallery images | ✅ done — exposes a **camera-rig framing bug** (EXP-3) |
 | 4 | Train/fine-tune **with synthetic data**, eval on real paintings | 🟡 synth-only FT done (big gain, confounded); combined FT + clean from-scratch+synth **running** |
-| 5 | New method | ⬜ TBD |
+| 5 | New method | 🟡 cross-domain mining (additional exp) coded + queued (7332307); main method TBD |
 
 ## Headline results
 All eval'd identically: multi-scale descriptors, **original 397k studio DB**, real test queries, full K×τ grid.
@@ -116,6 +116,22 @@ Fine-tunes load epoch-10 weights via **`--init_weights`** (added to `train_contr
 (broad paintings: GAP⁻ 65.92→70.41, ACC 67.42→71.49.)
 
 **Finding:** synth-only fine-tuning improved *everything*, including **non-paintings** (+2.6 full GAP) — surprising; the prediction was forgetting. Because non-paintings also rose, it's not pure forgetting — the diverse renders taught **transferable lighting/viewpoint/glass invariance** that helps real photos broadly. **⚠️ Confound:** we re-warmed LR (1e-8→1e-7) + trained 5 extra epochs, so part of the gain may be extra training, not synthetic. **Resolution:** the **from-scratch +synth** run (identical 10-epoch recipe to step-1, only synthetic added) is the confound-free A/B — that's the headline number to report; it also removed the need for a separate control run.
+
+### EXP-5 — step 5, new method 🟡
+**Additional experiment — cross-domain pair mining.** New `--pairs_type cross_domain_pos+new_neg`
+(`code/utils/datasets.py`): each anchor's positive is the *closest same-class sample in the OTHER
+domain* (studio↔synthetic) via `mine_positive` on the cross-domain subset; classes with no
+cross-domain partner fall back to standard `new_pos`, singletons self-pair. Directly optimizes the
+studio→gallery-photo bridge. Fires for the **4,952** painting classes that have both a studio and a
+synthetic image (verified on `data/gt_aug`). Mining the *closest* render also sidesteps the broken
+grazing-view renders (they sit far from the studio image). Recipe = `train_synth.slurm` (from-SWSL,
+10 ep, combined manifest) with only the pairs_type changed → **clean A/B vs scratch+synth** (job
+7330059). Job `train_crossdomain.slurm` → **7332307 (queued**, waiting on a GPU). Mining logic
+smoke-tested (tiny mixed manifest, asserts cross/fallback/singleton/negatives). Eval TBD (epoch-10
+ckpt → `data/models/r18SWSL_crossdomain/`; needs the same eval tweak as scratch+synth, not the
+`extract_eval_ft.slurm` epoch-5 globber).
+
+**Main method:** TBD (under discussion).
 
 ## How to evaluate any model (the reusable recipe)
 ```bash
