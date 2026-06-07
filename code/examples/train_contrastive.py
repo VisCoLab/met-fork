@@ -56,6 +56,7 @@ def main():
 	parser.add_argument('--pretrained', action='store_true') #start from the result of Imagenet pretraining
 	parser.add_argument('--imsize', default=500, type=int) #image size to train on
 	parser.add_argument('--resume', default=None, type=str) #resume training from a given checkpoint
+	parser.add_argument('--init_weights', default=None, type=str) #fine-tune: load weights only from a checkpoint, fresh optimizer/schedule
 	parser.add_argument('--pairs_type', default='sim_siam_pos+new_neg', type=str) 
 	parser.add_argument('--emb_proj', action='store_true') #if the backbone will also have an FC layer
 	parser.add_argument('--pca', action='store_true') #additionaly initialize FC layer with pca
@@ -161,6 +162,14 @@ def main():
 	#initialize the model and move it to the gpu
 	model = siamese_network(args.net,pooling = "gem",pretrained = args.pretrained,
 				emb_proj = args.emb_proj,init_emb_projector = PCA_stats).cuda()
+
+	if args.init_weights is not None:
+		print("loading init weights (fine-tune) from {}".format(args.init_weights))
+		_sd = torch.load(args.init_weights, weights_only=False, map_location='cuda')['state_dict']
+		_bk = 'backbone.projector.bias' #handle (512,) vs (1,512) projector-bias shape quirk
+		if _bk in _sd and model.state_dict()[_bk].shape != _sd[_bk].shape:
+			model.backbone.projector.bias.data = model.backbone.projector.bias.data.reshape(_sd[_bk].shape)
+		model.load_state_dict(_sd)
 
 	criterion = ContrastiveLoss(margin = args.margin).cuda()
 	

@@ -27,6 +27,16 @@ and [`reference/README.md`](reference/README.md) summarizes the task, methods, t
 tables (numbers to beat), and the crucial `--pairs_type` ⇄ paper-method-name mapping. Read it before
 designing experiments or writing up results.
 
+**Progress & results live in [`EXPERIMENTS.md`](EXPERIMENTS.md)** (the running lab notebook — read it
+first). As of 2026-06: step 1 **reproduced** (GAP 35.97 ≈ paper 36.1), step 2 (paintings-only) and
+step 3 (synthetic retrieval) done, step 4 (training **with** synthetic) in progress. The **synthetic
+dataset** — 24,760 Blender gallery renders of 4,898→4,952 Met paintings ×5 views — is at
+`/mnt/storage_6/project_data/pl0896-03/visart-dataset/` (folder→Met-id via each `metadata.json`; a
+known camera-framing bug makes the `right upper` view near-useless). Reusable helpers live in
+[`scripts/`](scripts/) (`eval_fullgrid.py` = the correct full-K-grid eval, `eval_paintings.py`,
+`extract_synthetic.py` + `eval_synthetic_retrieval.py`, `count_paintings.py`, `build_finetune_data.py`);
+SLURM jobs are the repo-root `*.slurm` files.
+
 ## HPC environment (PCSS Eagle) — how to run
 
 This repo lives on the **PCSS Eagle** cluster (`eagle.man.poznan.pl`) under grant **`pl0896-03`**, in
