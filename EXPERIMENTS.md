@@ -15,7 +15,7 @@ _Last updated: 2026-06-07._
 | 2 | Same model, test only on paintings | ✅ strict GAP⁻ 67.81 / ACC 69.36 |
 | 3 | Same model, retrieve synthetic gallery images | ✅ done — exposes a **camera-rig framing bug** (EXP-3) |
 | 4 | Train/fine-tune **with synthetic data**, eval on real paintings | 🟡 synth-only FT done (big gain, confounded); combined FT + clean from-scratch+synth **running** |
-| 5 | New method | 🟡 cross-domain mining (additional exp) coded + queued (7332307); main method TBD |
+| 5 | New method | 🟡 **DINOv3 + geometric re-rank** (EXP-6): ViT-L+gate **GAP 53.07** (+4.9 over DINOv3 ZS, both GAP/GAP⁻ up); cross-domain mining (additional exp) running (7332307) |
 
 ## Headline results
 All eval'd identically: multi-scale descriptors, **original 397k studio DB**, real test queries, full K×τ grid.
@@ -131,7 +131,48 @@ smoke-tested (tiny mixed manifest, asserts cross/fallback/singleton/negatives). 
 ckpt → `data/models/r18SWSL_crossdomain/`; needs the same eval tweak as scratch+synth, not the
 `extract_eval_ft.slurm` epoch-5 globber).
 
-**Main method:** TBD (under discussion).
+**Main method:** see EXP-6 (pivoted to DINOv3 + geometric re-rank).
+
+### EXP-6 — DINOv3 backbone + geometric re-rank (the new-method thread) 🟡
+Pivoted step 5 to a foundation backbone after finding DINOv3 already ~doubles the R18 GAP. All
+eval'd in OUR pipeline (canonical kNN-softmax GAP). DINOv3 features **reused** from the sibling
+`art-research` repo (Met split verified **byte-identical**, md5). **DINOv3 ZS on Met is the DINOv3
+paper's own claim** (Met GAP = DINOv2 40.0 **+10.8** ≈ 50.8) — NOT our contribution; our delta is the
+geometric re-rank on top.
+
+**Step 2 — DINOv3 reproduced in our pipeline** (`scripts/build_dinov3_pkl.py` + `eval_fullgrid.py`,
+`eval_dinov3.slurm` job 7332349): assemble raw DINOv3 CLS feats (aspect512, 4096-d) → our PCAw
+4096→512 + faiss kNN + GAP. Reproduces the paper → bridge faithful; earlier k=1 "0.68" was the
+degeneracy artifact (our full grid picks K=5).
+
+| backbone (frozen, zero-shot) | GAP | GAP⁻ | ACC |
+|---|--:|--:|--:|
+| R18-SWSL (our step-1) | 35.97 | 52.14 | 54.64 |
+| DINOv3-ViT-L | 48.16 | 72.14 | 77.07 |
+| DINOv3-7B (best K=5, τ=20) | 52.11 | 75.46 | 81.95 |
+
+**Step 3 — geometric re-rank for GAP** (C2 PatchMatch = mutual-NN + RANSAC on DINOv3 ViT-L patches,
+over the strong CLS top-50; `scripts/patchmatch_rerank.py` job 7332350 → PM scores saved to
+`data/rerank/pm_scores_*.npz`). Goal: reject distractors (DINOv3's weak spot — GAP⁻ 72 vs GAP 48 =
+24-pt gap). PM separates true (maxPM mean **34**) from distractors (**21**).
+- *Take 1 — additive into pre-softmax sim:* **NULL** (tuner picks λ=0). The softmax saturates (conf≈1
+  for true AND distractor), washing the signal out.
+- *Take 2 — fuse into the CONFIDENCE, ACC frozen* (`scripts/rerank_confidence_fusion.py`,
+  `rerank_fusion.slurm`): **works.**
+
+| DINOv3-ViT-L (Met protocol) | GAP | GAP⁻ | ACC |
+|---|--:|--:|--:|
+| baseline (CLS kNN) | 48.16 | 72.14 | 77.07 |
+| **+ geom gate** `conf·(1+w·maxPM/g0)`, w=0.25 | **53.07** | **74.69** | 77.07 |
+| + geom RRF, w=0.25 | 56.15 | 66.40 | 77.07 |
+
+**Gate improves BOTH GAP (+4.9) and GAP⁻ (+2.55), ACC unchanged** — clean distractor rejection, no
+tradeoff, and ViT-L+gate (53.07) already edges DINOv3-7B ZS (52.11). RRF's +8 GAP is a val-overfit
+mirage (K=1, GAP⁻ −5.7). **Next:** apply gate to the **7B** stage-1 (baseline 52.11) for the headline
+— needs ViT-L patches for the ~30% of the 7B top-50 candidate union not yet covered (~49k imgs, a
+ViT-L patch-extraction job in the art-research env), then re-match + gate (expect ~57 if +5 transfers).
+**Caveats:** ViT-L not yet 7B; val has only ~129 Met queries (noisy K/τ/w tuning); reuses
+art-research DINOv3 feats+patches; planar-homography geometry is iffy for 3D (non-painting) exhibits.
 
 ## How to evaluate any model (the reusable recipe)
 ```bash
