@@ -21,6 +21,15 @@ def augmentation(key,imsize = 500):
 			transforms.Compose([
 				transforms.ToTensor(),
 				transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+				]),
+
+		# DINOv3 needs a fixed size divisible by 16; resizing here (square) lets the
+		# inference loaders batch (batch>1) instead of the batch_size=1 conv path.
+		"augment_inference_resize":
+			transforms.Compose([
+				transforms.Resize((imsize, imsize)),
+				transforms.ToTensor(),
+				transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 				])
 
 	}
