@@ -1,187 +1,217 @@
-# DINOv3 embedding-space analysis of the synthetic gallery dataset
+# DINOv3 embedding analysis of the synthetic gallery dataset
 
-*What organizes the foundation-model representation of our synthetic renders — camera
-angle, procedural scene hyperparameters, or painting identity — and how far is synthetic
-from real? (Met / VISART fork. Lab-notebook entry: [`EXPERIMENTS.md` → EXP-7](../../EXPERIMENTS.md).)*
+*Does a strong vision model organize our synthetic renders by **camera angle**, by the **random
+scene settings** (floor, placard…), or by **which painting** they show — and how different are the
+synthetic images from real ones? (Met / VISART fork; lab notebook: [`EXPERIMENTS.md` → EXP-7](../../EXPERIMENTS.md).)*
+
+## What we did, in one paragraph
+
+We pushed every image through a **frozen DINOv3 ViT-L** model and kept one feature vector per image —
+think of it as the model's 1024-number "summary" of what the image looks like. Images the model
+considers similar get similar vectors. We then ask: **what makes two images land near each other?**
+We compare three sets of images:
+
+| set | what it is | count |
+|---|---|--:|
+| **synthetic** | our gallery renders — 4,952 paintings × 5 camera views | 24,760 |
+| **studio** | the catalog photo (`MET/<id>/0.jpg`) each render was built from | 4,952 |
+| **real** | real visitor photos of paintings from the Met test set | 221 |
+
+> **How to read the numbers.** Every comparison uses **cosine similarity**: we treat each image's
+> vector as a direction and measure how aligned two directions are (more aligned = more similar).
+> Recurring terms, one line each:
+> - **Chance** — what a score would be if images were paired *at random*; the baseline to beat.
+> - **Enrichment** — observed ÷ chance, i.e. *how many times more often than random* something happens.
+> - **Linear-probe / kNN accuracy** — how well a simple classifier can read a property (angle, floor…)
+>   off the vectors; a value far above *chance* means the model encodes that property strongly.
+> - **Silhouette** (−1 to 1) — how "clustered" groups are: ≈1 tight, well-separated blobs; ≈0 no real
+>   clustering (one connected cloud); below 0 the groups overlap.
+> - **t-SNE / PCA plots** — ways to squash the 1024-number vectors down to a 2-D map so we can eyeball
+>   them; nearby dots ≈ similar images.
 
 ## TL;DR
 
-- **DINOv3 keys on painting *identity*, not on rendering nuisances.** A render's nearest
-  neighbours are overwhelmingly the *other views of the same painting* (~1500× over chance).
-- **Camera angle is the dominant *cross-painting* axis** — 99% linearly decodable and 68% of
-  cross-painting neighbours share the query's angle — but it is a smooth linear direction, **not
-  isolated clusters**.
-- **Procedural hyperparameters (floor, placard) are only weakly encoded** once you remove a
-  dataset confound; the background randomization is largely ignored. Light randomization is not
-  recoverable from metadata and was not tested.
-- **The three domains (studio catalog / synthetic renders / real visitor photos) are
-  near-perfectly separable** — there is a clean, large domain gap.
-- **The renders are "too clean":** no synthetic view lands closer to the real-photo region than
-  the studio catalog images already do. The synthetic data's value is therefore **augmentation /
-  viewpoint-invariance**, not landing on the real-photo manifold.
-- The **EXP-3 camera-framing bug is independently corroborated** by an unrelated model + metric.
+- **The model groups images by *which painting* they show — not by the rendering settings.** A render's
+  nearest neighbours are overwhelmingly the *other views of the same painting* (~1500× more often than random).
+- **Camera angle is the strongest *secondary* pattern**, but it's a smooth gradient, not separate clusters.
+- **The random scene settings (floor, placard) are almost ignored** by the model. (We couldn't test the
+  random lighting — it isn't recorded in the metadata.)
+- **Synthetic, studio, and real photos form three clearly distinct groups** — there's a real, large gap
+  between synthetic and real.
+- **The renders are "too clean":** none of them sit any closer to the *real photos* than the plain studio
+  catalog images already do. So the synthetic data helps as **extra variety for training**, not by looking
+  like real visitor photos.
+- The **camera-framing bug from EXP-3 shows up here too**, found by a completely different method.
 
 ---
 
 ## 1. Setup
 
-| | |
-|---|---|
-| **Backbone** | DINOv3 **ViT-L/16** (`facebook/dinov3-vitl16-pretrain-lvd1689m`), **frozen, zero-shot** |
-| **Feature** | CLS token, `aspect512` preprocessing (long side→512, mult-of-16), **L2-normalized** (cosine geometry) |
-| **Why this** | Model-intrinsic representation (no task-specific projector, no train-fit PCA-whitening). The real-side features **reuse art-research's already-extracted Met features** with the *identical* model + preprocessing, so synthetic and real are directly comparable. |
-
-Three point clouds:
-
-| cloud | what | N |
-|---|---|--:|
-| **synthetic** | gallery renders, all 4,952 paintings × 5 camera views | 24,760 |
-| **studio** | the catalog source photo `MET/<id>/0.jpg` each render was generated from (paired) | 4,952 |
-| **real query** | real visitor photos of **paintings** from the Met test set (broad def.; 173 strict) | 221 |
-
-Recoverable procedural factors per render (from each `metadata.json`, via
-[`scripts/synth_meta.py`](../../scripts/synth_meta.py)): **camera angle** (5), **floor material**
-(5: `floor_1..5`), **placard-x** (continuous), **canvas aspect** (continuous). ⚠️ **Light shape /
-energy / spread are *not* recorded in metadata**, so light randomization could not be tested.
+- **Model:** DINOv3 ViT-L/16, frozen (used as-is, no fine-tuning). We keep its single per-image summary
+  vector (the "CLS token"), scaled to unit length so we compare images by direction (cosine).
+- **Why it's comparable:** the real images reuse vectors already extracted by the sibling *art-research*
+  repo with the *exact same* model and image pre-processing, so synthetic vs. real is apples-to-apples.
+- **Scene settings we could recover** from each render's `metadata.json` (via
+  [`scripts/synth_meta.py`](../../scripts/synth_meta.py)): camera angle (5), floor texture (5 options),
+  placard position, painting shape (aspect ratio). ⚠️ The random **lighting is *not* recorded**, so we
+  could not test it.
 
 ---
 
-## 2. What dominates the embedding structure?
+## 2. What makes two renders similar to the model?
 
-The most direct probe is the **label composition of each render's 10 nearest (cosine) neighbours**.
-Because the scene is randomized **once per painting**, all 5 views of an artwork share one floor —
-so "same-painting" neighbours are *automatically* "same-floor" (and, since each painting has one
-render per angle, *never* "same-angle"). We therefore condition the angle/floor affinity on
-**different-painting** neighbours to remove that confound.
+The most direct test: for each render, look at its **10 nearest neighbours** (the 10 most similar
+renders) and ask what they have in common.
 
-![What dominates local DINOv3 structure](figures/knn_composition.png)
+One wrinkle to handle first: the scene is randomized **once per painting**, so all 5 views of a painting
+share the *same* floor. That means a neighbour that is the *same painting* is automatically the *same
+floor* too — which would make floor look more important than it is. So for angle and floor we only count
+neighbours that are a **different painting**, which removes that bias.
 
-| a neighbour shares… | observed | chance | enrichment |
+![What the model groups by](figures/knn_composition.png)
+
+| out of a render's 10 nearest neighbours, the fraction that are… | observed | chance | enrichment |
 |---|--:|--:|--:|
-| **same painting** (any angle) | **0.247** | 0.0002 | **~1500×** |
-| **same angle** (different painting) | **0.682** | 0.20 | 3.4× |
-| same floor (different painting) | 0.277 | 0.20 | 1.4× |
+| the **same painting** (any angle) | **0.25** | 0.0002 | **~1500×** |
+| (different painting) the **same camera angle** | **0.68** | 0.20 | 3.4× |
+| (different painting) the same floor texture | 0.28 | 0.20 | 1.4× |
 
-**Global decodability** of each factor from the raw embedding (50/50 stratified split):
+*Observed = what we measured; chance = the same fraction if neighbours were random; enrichment = observed ÷ chance.*
 
-| factor (synthetic only) | linear-probe | kNN | silhouette | chance |
+**Plain reading:** identity wins by a mile — there are only 4 other views of the same painting out of
+24,759 images, yet on average 2–3 of a render's 10 neighbours are them. Among *different* paintings,
+camera angle is a strong tie (3.4× chance), while floor texture is barely above random (1.4×).
+
+We can also ask how easily each property can be *read off* the vectors with a simple classifier:
+
+| property of a render | linear-probe acc. | kNN acc. | silhouette | chance |
 |---|--:|--:|--:|--:|
-| **camera angle** (5) | **0.990** | 0.718 | 0.023 | 0.20 |
-| floor material (5) | 0.595 | 0.503 | −0.005 | 0.21 |
-| placard-x quartile (4) | 0.550 | 0.543 | −0.011 | 0.25 |
-| canvas aspect quartile (4) *(content-correlated)* | 0.728 | 0.673 | −0.006 | 0.25 |
+| **camera angle** (5) | **0.99** | 0.72 | 0.02 | 0.20 |
+| floor texture (5) | 0.59 | 0.50 | −0.01 | 0.21 |
+| placard position (4 bins) | 0.55 | 0.54 | −0.01 | 0.25 |
+| painting shape / aspect (4 bins) | 0.73 | 0.67 | −0.01 | 0.25 |
 
-**Reading.** Identity dominates locality. Camera **angle** is the strongest *systematic* axis — it is
-~perfectly **linearly** separable (0.99) and clearly organizes cross-painting neighbours (0.68), yet
-its silhouette ≈ 0 and kNN-by-angle is only 0.72: it is a smooth direction layered on top of content,
-not a set of discrete blobs. **Floor and placard barely beat chance** — the model ignores the
-randomized background. (Aspect ratio is more decodable, but it is the painting's actual *shape*, i.e.
-content, not a nuisance.)
+*Accuracies run 0–1 (1 = perfect); well above "chance" = strongly encoded. Silhouette ≈ 0 everywhere = the
+images form one connected cloud, not separate blobs.*
 
-The t-SNE views make this visible — angle shows soft structure (note the broken `right upper` view
-peeling off), while floor material is essentially salt-and-pepper:
+So camera angle is **almost perfectly readable** (0.99) — it's a clear, consistent direction in the
+vector space — but its silhouette ≈ 0, meaning it's a smooth gradient layered on top of painting identity,
+**not** a set of distinct clusters. Floor and placard are close to chance. (Painting shape scores higher,
+but that's a property of the *painting itself*, not a random setting.)
 
-| by camera angle | by floor material |
+The 2-D maps show the same thing — soft angle structure (watch the broken `right upper` view break away),
+and floor texture scattered at random:
+
+| coloured by camera angle | coloured by floor texture |
 |---|---|
-| ![t-SNE by angle](figures/proj_synth_angle_tsne.png) | ![t-SNE by floor](figures/proj_synth_floor_tsne.png) |
+| ![2-D map by angle](figures/proj_synth_angle_tsne.png) | ![2-D map by floor](figures/proj_synth_floor_tsne.png) |
 
 ---
 
-## 3. Synthetic vs. real: a clean, large domain gap
+## 3. How far is synthetic from real?
 
-All three domains are **near-perfectly linearly separable**:
+First: are the three image sets even distinguishable? We check whether a simple straight-line classifier
+can tell them apart.
 
-| domains | linear separability |
+| can a classifier tell these apart? | accuracy |
 |---|--:|
-| studio / synthetic / real-query (3-way) | **0.994** |
-| studio vs. synthetic | 0.992 |
-| studio vs. real query | 0.965 |
-| synthetic vs. real query | 0.969 |
+| studio vs. synthetic vs. real (all three) | **0.99** |
+| studio vs. synthetic | 0.99 |
+| studio vs. real photo | 0.97 |
+| synthetic vs. real photo | 0.97 |
 
-![DINOv3 embeddings by domain (t-SNE)](figures/proj_domain_tsne.png)
+*Accuracy near 1.0 = the groups barely overlap — they're clearly distinct regions of the space.*
 
-*(PCA view: [`figures/proj_domain_pca.png`](figures/proj_domain_pca.png).)*
+![The three image groups in 2-D](figures/proj_domain_tsne.png)
 
-**The renders are "too clean".** Centroid cosine distances tell the sharper story — the gap we
-ultimately care about is **studio ↔ real-query = 0.24**:
+*(Same plot with PCA instead of t-SNE: [`figures/proj_domain_pca.png`](figures/proj_domain_pca.png).)*
 
-| centroid pair | cosine distance |
+The more interesting question is **which gap is bigger** — synthetic-to-real, or studio-to-real? We measure
+the distance between the *average* vector of each group:
+
+| distance between group averages | value |
 |---|--:|
-| studio ↔ real query | **0.240** |
-| **synth `front`** ↔ studio | **0.152** |
-| synth `front` ↔ real query | 0.237 |
-| synth `left upper` ↔ studio | 0.301 |
-| synth `right upper` ↔ studio | 0.621 |
+| studio ↔ real photo *(the gap we ultimately care about)* | **0.24** |
+| synthetic **front** view ↔ studio | **0.15** |
+| synthetic front view ↔ real photo | 0.24 |
+| synthetic `left upper` view ↔ studio | 0.30 |
+| synthetic `right upper` view ↔ studio | 0.62 |
 
-The synthetic **front** view sits *closer to studio* (0.152) than the real query photos do (0.240),
-and **no** synthetic view lands meaningfully closer to the real-query centroid than studio already is
-(front↔query 0.237 ≈ studio↔query 0.240). So in frozen-DINOv3 space the renders reproduce
-viewpoint / glass / lighting variation but **not** the real phone-photo shift. This is consistent
-with EXP-4's observation that adding synthetic data helped *all* query types: the benefit is more
-plausibly an **augmentation / invariance** effect than the renders occupying the real-photo region.
+*Distance is "1 − cosine similarity" between the average vectors: 0 = identical direction, bigger = more
+different. As a yardstick, the real studio→photo gap is 0.24.*
+
+The synthetic **front** view is actually *closer to the studio photos* (0.15) than the real photos are
+(0.24), and **no** synthetic view is any closer to real photos than the studio images already are. In
+other words, **the renders look like clean studio shots, not like real visitor photos.** This fits what we
+saw in EXP-4 (adding synthetic data helped *all* query types): the benefit comes from **extra training
+variety**, not from the renders matching the real-photo "look".
 
 ---
 
-## 4. The camera-framing bug, corroborated independently
+## 4. The camera-framing bug shows up again
 
-For each render we measure the cosine to its **own** studio source painting. This bottoms out exactly
-where EXP-3's retrieval R@1 (a *different* model — R18-SWSL — and a *different* metric) does:
+For each render we measure how similar it is to the *exact* catalog photo it was made from. This drops off
+in the same order as the retrieval accuracy from EXP-3 — even though that was a *different* model and a
+*different* test:
 
-![Per-view render↔studio similarity vs. retrievability](figures/per_view_to_studio.png)
+![Per-view similarity vs. retrievability](figures/per_view_to_studio.png)
 
-| view | mean cos → own studio source | EXP-3 retrieval R@1 (%) |
+| camera view | similarity to its own studio photo | EXP-3 retrieval R@1 |
 |---|--:|--:|
-| front | 0.843 | 64.84 |
-| left upper | 0.723 | 75.85 |
-| right bottom | 0.709 | 21.95 |
-| left bottom | 0.648 | 20.62 |
-| **right upper** | **0.440** | **1.41** |
+| front | 0.84 | 64.84% |
+| left upper | 0.72 | 75.85% |
+| right bottom | 0.71 | 21.95% |
+| left bottom | 0.65 | 20.62% |
+| **right upper** | **0.44** | **1.41%** |
 
-`right upper` renders are far from their own source (0.44 vs front's 0.84) and the most isolated in
-centroid space (0.62 from studio) — the grazing/edge-on framing bug, confirmed from an independent
-direction. (The mid-views' cosine ordering does not perfectly track R@1, because retrievability is
-*discriminability*, not raw similarity, and EXP-3 used a different backbone.)
+*Similarity: 1 = identical to its source photo. R@1 (recall@1) = how often retrieval ranks the correct
+painting first.*
+
+The `right upper` render barely resembles its own painting (0.44 vs. front's 0.84) and is the most
+isolated view in the space — exactly the grazing, edge-on framing bug found in EXP-3, now confirmed from a
+completely independent angle. (The middle views don't line up perfectly, because being *findable* depends
+on standing out from *other* paintings, not just resembling your own — and EXP-3 used a different model.)
 
 ---
 
-## 5. Implications
+## 5. What this means
 
-- **DINOv3 is a strong base for this dataset:** it is invariant to the synthetic background
-  randomization and groups by artwork content — exactly what instance recognition needs.
-- **Don't over-read per-angle synthetic numbers** until the rig is fixed: the broken `right upper`
-  view (and the foreshortened `*bottom` views) are genuine feature-space outliers.
-- **To actually close the studio→real-photo gap**, the renders may need to be *less* clean — real
-  visitor-photo nuisances (phone-camera optics, oblique perspective, real ambient lighting, motion
-  blur, occlusion) rather than only viewpoint/floor variety.
-- **Natural follow-ups:** (a) repeat on **DINOv3-7B** or on our **fine-tuned** model to see whether
-  training pulls synthetic toward the real-query region; (b) visual contact sheets of cross-domain
-  nearest neighbours to make the "too clean" finding concrete.
+- **DINOv3 is a good base for this task:** it sees past the random gallery background and groups images by
+  the actual artwork — which is exactly what we want for recognizing paintings.
+- **Don't trust per-view synthetic scores until the camera rig is fixed:** the `right upper` view (and the
+  foreshortened `*bottom` views) are genuinely broken.
+- **To actually close the gap to real photos**, the renders probably need to be *less* clean — more of the
+  messiness of real visitor photos (phone-camera optics, odd angles, real lighting, blur, people in the
+  way), not just more viewpoints.
+- **Worth trying next:** (a) repeat with the bigger DINOv3-7B or with our fine-tuned model, to see if
+  training pulls synthetic toward the real-photo region; (b) make side-by-side picture sheets of
+  cross-group nearest neighbours to show the "too clean" effect visually.
 
 ---
 
 ## 6. Caveats
 
-- Frozen **DINOv3 ViT-L** zero-shot — not the fine-tuned R18-SWSL of the main results, nor the 7B model.
-- **L2-normalized CLS cosine** geometry — not the eval pipeline's train-fit PCA-whitening.
-- **Light randomization not recoverable** from `metadata.json`; only floor/placard/aspect/angle tested.
-- Real query cloud is small (221 broad / 173 strict painting photos).
+- This is the **frozen, off-the-shelf** DINOv3 ViT-L — not our fine-tuned model and not the bigger 7B one.
+- We compare by **cosine similarity** on the raw vectors — not the whitening step the retrieval pipeline uses.
+- The random **lighting** isn't recorded in the metadata, so it couldn't be tested.
+- The real-photo set is small (221 painting photos).
 
 ---
 
-## 7. Reproduce
+## 7. How to reproduce
 
-Run in `.venv-dino` (DINOv3 + `transformers`; analysis also needs `scikit-learn` + `matplotlib`).
+Run in `.venv-dino` (DINOv3 + `transformers`; the analysis also needs `scikit-learn` + `matplotlib`).
 
 ```bash
-# 1) extract frozen DINOv3 ViT-L CLS features over the 24,760 renders (GPU, ~2 min on H100)
+# 1) compute DINOv3 ViT-L vectors for the 24,760 renders (GPU, ~2 min on an H100)
 sbatch extract_synth_dino.slurm
-# 2) assemble real reference clouds (reuse art-research ViT-L Met feats) + run the analysis (CPU)
+# 2) gather the real reference vectors + run the analysis (CPU)
 sbatch analysis_synth_dino.slurm
 # -> data/synth_dino/analysis/{summary.json, *.png}
 ```
 
-Pipeline: [`scripts/synth_meta.py`](../../scripts/synth_meta.py) (procedural-factor parser) ·
+Code: [`scripts/synth_meta.py`](../../scripts/synth_meta.py) (reads the scene settings) ·
 [`scripts/extract_synth_dino.py`](../../scripts/extract_synth_dino.py) ·
 [`scripts/assemble_real_dino.py`](../../scripts/assemble_real_dino.py) ·
 [`scripts/analyze_synth_dino.py`](../../scripts/analyze_synth_dino.py).
-All numbers above are from `data/synth_dino/analysis/summary.json`.
+Every number above comes from `data/synth_dino/analysis/summary.json`.
