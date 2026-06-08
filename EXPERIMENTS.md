@@ -174,6 +174,49 @@ ViT-L patch-extraction job in the art-research env), then re-match + gate (expec
 **Caveats:** ViT-L not yet 7B; val has only ~129 Met queries (noisy K/τ/w tuning); reuses
 art-research DINOv3 feats+patches; planar-homography geometry is iffy for 3D (non-painting) exhibits.
 
+### EXP-7 — DINOv3 embedding structure of the synthetic dataset ✅
+What organizes the **frozen DINOv3 ViT-L** (aspect512 CLS, L2-norm/cosine) embedding space of the
+24,760 synthetic renders — camera angle vs procedural hyperparameters — and how does it sit relative
+to the real domains? Real side **reuses art-research's identical ViT-L Met features** (same model +
+aspect512 preprocessing): studio sources `MET/<id>/0.jpg` (4,952, paired) + real painting test queries
+(221 broad / 173 strict). Pipeline: `scripts/extract_synth_dino.py` (GPU job **7333958**, 24,760×1024
+in **2 min @275 img/s**, batched since renders are all 512²) → `scripts/assemble_real_dino.py` +
+`scripts/analyze_synth_dino.py` (CPU `analysis_synth_dino.slurm`, job 7333977). Factors parsed by
+`scripts/synth_meta.py`. Artifacts: `data/synth_dino/analysis/{summary.json, 6 PNGs}`.
+**Standalone write-up with all figures: [`docs/synth-embedding-analysis/`](docs/synth-embedding-analysis/README.md).**
+
+**1) Content dominates; angle is the strong secondary axis; procedural nuisances are weakly encoded.**
+
+| factor (synthetic only) | lin-probe | kNN | silhouette | chance |
+|---|--:|--:|--:|--:|
+| camera angle (5) | **0.990** | 0.72 | 0.02 | 0.20 |
+| floor material (5) | 0.59 | 0.50 | ~0 | 0.21 |
+| placard-x quartile | 0.55 | 0.54 | ~0 | 0.25 |
+| canvas aspect quartile *(content-correlated)* | 0.73 | 0.67 | ~0 | 0.25 |
+
+kNN(k=10) neighbour composition — **de-confounded** (floor is randomized **once per painting**, so all
+5 views share it → same-painting⇒same-floor; each painting has 1 view/angle → same-painting⇒diff-angle):
+**same-painting 0.247** (chance 0.0002, ~1500×); among *different*-painting neighbours **same-angle
+0.68** (3.4× chance) vs **same-floor 0.28** (1.4×). Read: DINOv3 keys on **painting identity** (tight
+per-artwork clusters in t-SNE; angle near-perfectly *linearly* separable but **not** isolated blobs,
+silhouette≈0); **angle** is the dominant cross-painting organizer; **floor/placard barely encoded**.
+
+**2) Clean, large domain gap — and the renders are "too clean".** Linear separability: studio/synth/query
+3-way **0.994**; studio↔synth 0.992, studio↔query 0.965, synth↔query 0.969 — synthetic is its **own**
+region. Centroid cosine dist: **studio↔query 0.24** (the real gap); synth **front is closest to studio
+(0.15)** — *closer than the real queries are* — and **no** synthetic view lands meaningfully closer to
+the real-query centroid than studio already is (front↔query 0.237 ≈ studio↔query 0.240). So in frozen-
+DINOv3 space the renders add **viewpoint/glass/lighting variation** but do **not** reproduce the real
+phone-photo shift → EXP-4's synthetic gain is more plausibly **augmentation/invariance** than domain-matching.
+
+**3) Framing bug corroborated independently** (DINOv3 + cosine vs EXP-3's R18 retrieval): `right upper`
+renders sit far from their **own** studio source (cos **0.44** vs front **0.84**) and far in centroid
+space (**0.62** from studio); per-view cos-to-source bottoms out exactly where EXP-3 R@1 does.
+
+**Caveats:** frozen DINOv3 ViT-L (not the FT-R18 of EXP-1/4, nor 7B); L2-normed CLS cosine (not the
+eval's train-fit PCAw); light randomization not recoverable from `metadata.json`; mid-view cos-to-source
+doesn't perfectly track R@1 (retrievability = *discriminability*, not raw similarity; EXP-3 used R18).
+
 ## How to evaluate any model (the reusable recipe)
 ```bash
 # GPU job: extract MS descriptors (original studio DB + real queries) then full-grid + paintings eval
@@ -203,6 +246,7 @@ sbatch --job-name=met-fteval-<name> extract_eval_ft.slurm <combined|synth>   # f
 - `scripts/extract_synthetic.py` + `scripts/eval_synthetic_retrieval.py` — step-3 synthetic retrieval.
 - `scripts/count_paintings.py` — painting counts (Met Open Access join). `scripts/build_finetune_data.py` — augmented manifests + image-root.
 - `scripts/smoke_gpu.py` — GPU + CPU-faiss env smoke test.
+- **EXP-7** (DINOv3 embedding-structure analysis): `scripts/synth_meta.py` (per-folder procedural factors), `scripts/extract_synth_dino.py` (`extract_synth_dino.slurm`), `scripts/assemble_real_dino.py` + `scripts/analyze_synth_dino.py` (`analysis_synth_dino.slurm`). Run in `.venv-dino` (+ scikit-learn/matplotlib).
 - `code/`: faiss→CPU patch, `extract_descriptors.py` weights_only fix, `train_contrastive.py` `--init_weights`.
 - `reference/README.md` — paper targets + method↔`pairs_type` mapping.
 
@@ -210,4 +254,5 @@ sbatch --job-name=met-fteval-<name> extract_eval_ft.slurm <combined|synth>   # f
 - `data/images`, `data/ground_truth` — dataset symlinks. `data/aug/images`, `data/gt_aug`, `data/gt_synth` — augmented training wiring.
 - `data/models/*` — checkpoints (`r18SWSL_con-syn+real-closest` step-1, `r18SWSL_ft_synth`, `r18SWSL_ft_combined`, `r18SWSL_scratch_synth`).
 - `data/descriptors*/` — extracted descriptors per model. `data/authors/` — authors' checkpoint + descriptors.
+- `data/synth_dino/` — EXP-7: synthetic + real DINOv3 ViT-L feats, records, `analysis/` (summary.json + figures).
 - `data/torch_home/` — cached SWSL weights. `data/MetObjects.csv` (~303 MB). `data/synth_gen/` — painting-class lists.
