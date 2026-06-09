@@ -78,9 +78,9 @@ plt.close(fig)
 # =====================================================================
 # Figure 2 — baseline vs the clean from-scratch +synth, every metric
 # =====================================================================
-metrics = ["Full GAP", "GAP⁻\n(no distr.)", "Accuracy", "Paint GAP⁻\n(strict)", "Paint ACC\n(strict)"]
-base    = [35.97, 52.14, 54.64, 67.81, 69.36]
-synth   = [38.15, 55.49, 58.23, 71.09, 72.83]
+metrics = ["Full GAP", "GAP⁻\n(no distr.)", "Accuracy", "Paint GAP⁻\n(n=148)", "Paint ACC\n(n=148)"]
+base    = [35.97, 52.14, 54.64, 67.86, 69.59]
+synth   = [38.15, 55.49, 58.23, 70.41, 72.30]
 x = range(len(metrics))
 w = 0.38
 

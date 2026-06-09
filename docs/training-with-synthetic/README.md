@@ -26,9 +26,8 @@ the two runs are directly comparable and any difference is down to the added dat
 > - **Accuracy (ACC)** — of the in-collection queries, the fraction whose top guess is correct.
 > - **distractors / "junk"** — query photos of things *not* in the collection (other artworks, non-art).
 >   A good model gives them low confidence. They make GAP much harder than plain accuracy.
-> - **paintings (strict)** — the 173 test queries that are paintings (MetObjects `Classification ==
->   "Paintings"`). Our contribution targets paintings, so we track them separately. ("broad" = a looser
->   painting definition, 221 queries.)
+> - **paintings** — the **148** test queries with `Classification == "Paintings"` (the committed
+>   painting test set, used project-wide). Our contribution targets paintings, so we track them separately.
 > - **clean A/B** — two runs identical in *everything* except the one thing under test (here: +synthetic
 >   data). Any difference is attributable to that one change — no other explanation.
 
@@ -36,8 +35,8 @@ the two runs are directly comparable and any difference is down to the added dat
 
 - **Adding synthetic gallery data lifts full-benchmark GAP from 35.97 → 38.15** with the *identical*
   training recipe — a clean **+2.18**, and it **beats the original paper's best single model (36.1)**.
-- **Every metric improves, not just paintings:** GAP⁻ +3.35, accuracy +3.59, paint GAP⁻ +3.28, paint
-  accuracy +3.47 (strict; broad paintings move even more, ~+4).
+- **Every metric improves, not just paintings:** GAP⁻ +3.35, accuracy +3.59, paint GAP⁻ +2.55, paint
+  accuracy +2.71 (on the 148-query painting set).
 - **Non-painting queries improve too** — so this isn't simply "more painting data". The diverse renders
   teach broadly useful lighting / viewpoint / glass invariance that helps real photos across the board.
 - Two quicker **fine-tuning** variants gave comparable or larger gains (synth-only 38.61, combined 37.38)
@@ -107,12 +106,10 @@ same learning-rate schedule, same everything else). So this is the honest measur
 | Full GAP | 35.97 | **38.15** | **+2.18** |
 | GAP⁻ (no distractors) | 52.14 | **55.49** | **+3.35** |
 | Accuracy | 54.64 | **58.23** | **+3.59** |
-| Paint GAP⁻ (strict) | 67.81 | **71.09** | **+3.28** |
-| Paint ACC (strict) | 69.36 | **72.83** | **+3.47** |
-| Paint GAP⁻ (broad) | 65.92 | 69.90 | +3.98 |
-| Paint ACC (broad) | 67.42 | 71.49 | +4.07 |
+| Paint GAP⁻ (148) | 67.86 | **70.41** | **+2.55** |
+| Paint ACC (148) | 69.59 | **72.30** | **+2.71** |
 
-*Same model, same recipe, +synthetic. All seven numbers go up.*
+*Same model, same recipe, +synthetic. All five numbers go up.*
 
 **The gain is broad, not just paintings.** Accuracy on *all* in-collection queries rises +3.59, including
 non-painting exhibits the synthetic set never depicts. That tells us the renders aren't helping by simply
