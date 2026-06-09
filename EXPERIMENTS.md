@@ -198,7 +198,7 @@ What organizes the **frozen DINOv3 ViT-L** (aspect512 CLS, L2-norm/cosine) embed
 24,760 synthetic renders — camera angle vs procedural hyperparameters — and how does it sit relative
 to the real domains? Real side **reuses art-research's identical ViT-L Met features** (same model +
 aspect512 preprocessing): studio sources `MET/<id>/0.jpg` (4,952, paired) + real painting test queries
-(221 broad / 173 strict). Pipeline: `scripts/extract_synth_dino.py` (GPU job **7333958**, 24,760×1024
+(**148**, committed `Classification=="Paintings"` — the project-wide def). Pipeline: `scripts/extract_synth_dino.py` (GPU job **7333958**, 24,760×1024
 in **2 min @275 img/s**, batched since renders are all 512²) → `scripts/assemble_real_dino.py` +
 `scripts/analyze_synth_dino.py` (CPU `analysis_synth_dino.slurm`, job 7333977). Factors parsed by
 `scripts/synth_meta.py`. Artifacts: `data/synth_dino/analysis/{summary.json, 6 PNGs}`.
@@ -221,10 +221,10 @@ per-artwork clusters in t-SNE; angle near-perfectly *linearly* separable but **n
 silhouette≈0); **angle** is the dominant cross-painting organizer; **floor/placard barely encoded**.
 
 **2) Clean, large domain gap — and the renders are "too clean".** Linear separability: studio/synth/query
-3-way **0.994**; studio↔synth 0.992, studio↔query 0.965, synth↔query 0.969 — synthetic is its **own**
-region. Centroid cosine dist: **studio↔query 0.24** (the real gap); synth **front is closest to studio
-(0.15)** — *closer than the real queries are* — and **no** synthetic view lands meaningfully closer to
-the real-query centroid than studio already is (front↔query 0.237 ≈ studio↔query 0.240). So in frozen-
+3-way **0.995**; studio↔synth 0.992, studio↔query 0.973, synth↔query 0.973 — synthetic is its **own**
+region. Centroid cosine dist: **studio↔query 0.22** (the real gap); synth **front is closest to studio
+(0.15)** — *closer than the real queries are* — and **no** synthetic view lands closer to
+the real-query centroid than studio already is (front↔query 0.23 ≈ studio↔query 0.22). So in frozen-
 DINOv3 space the renders add **viewpoint/glass/lighting variation** but do **not** reproduce the real
 phone-photo shift → EXP-4's synthetic gain is more plausibly **augmentation/invariance** than domain-matching.
 

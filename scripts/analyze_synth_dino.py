@@ -130,11 +130,11 @@ def main():
     floor_idx = s["floor_idx"].astype(int)
     placard_x = s["placard_x"]; aspect = s["aspect"]; smet = s["met_id"]
     studio = l2n(r["studio_feats"]); studio_met = r["studio_met_id"]
-    pq = l2n(r["pq_feats"]); pq_strict = r["pq_strict"]
+    pq = l2n(r["pq_feats"])
     print(f"synth {synth.shape} | studio {studio.shape} | painting-queries {pq.shape}", flush=True)
 
     summary = {"counts": {"synth": int(len(synth)), "studio": int(len(studio)),
-                          "painting_queries": int(len(pq)), "pq_strict": int(pq_strict.sum())},
+                          "painting_queries": int(len(pq))},
                "angles": angles, "floors": floors}
 
     # ---------- (A) synthetic substructure: which factor does DINOv3 encode? ----------

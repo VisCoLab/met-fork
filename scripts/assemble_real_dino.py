@@ -6,15 +6,15 @@ Two real clouds:
   studio  : the catalog source image (MET/<id>/0.jpg) for each synthetic class
             -> the exact studio photos the renders were generated from (paired).
   query   : real visitor photos of PAINTINGS from the Met test set (the true target
-            domain). Painting classes via the Met Open Access medium/classification
-            join (same strict/broad defs as scripts/eval_paintings.py).
+            domain). CANONICAL painting set = `Classification == "Paintings"` = the 148
+            committed query paths in data/gt_paint/testset.json -- the single painting
+            definition used project-wide (see scripts/eval_paintings.py).
 
 Output (--out-dir): real_dino_vitl16_aspect512.npz
   studio_feats(C,1024 f16), studio_met_id(C,)
-  pq_feats(Q,1024 f16), pq_met_id(Q,), pq_strict(Q, bool)   # broad painting queries; strict flagged
+  pq_feats(Q,1024 f16), pq_met_id(Q,)                       # 148 Classification==Paintings queries
 """
 import argparse
-import csv
 import glob
 import json
 import os
@@ -29,8 +29,6 @@ AR_FEAT = ("/mnt/storage_6/project_data/pl0896-03/art-research/"
            "experiments/met_protocol/features/dinov3_vitl16_aspect512")
 MODEL, VARIANT = "dinov3_vitl16", "aspect512"
 N = {"train": 397121, "val": 2165, "test": 19319}
-PAINT_MED = ("oil on", "tempera on", "oil and tempera", "tempera and oil", "acrylic on",
-             "distemper on", "encaustic", "oil colors on", "oil paint")
 
 
 def chunk_files(split):
@@ -63,28 +61,11 @@ def synth_class_met_ids(synth_root):
     return [parse_metadata(os.path.join(synth_root, fl))["met_id"] for fl in folders]
 
 
-def painting_sets(csv_path):
-    strict, broad = set(), set()
-    with open(csv_path, encoding="utf-8-sig", newline="") as fh:
-        for row in csv.DictReader(fh):
-            oid = (row.get("Object ID") or "").strip()
-            if not oid:
-                continue
-            cls = (row.get("Classification") or "").lower()
-            name = (row.get("Object Name") or "").lower()
-            med = (row.get("Medium") or "").lower()
-            s = "painting" in cls
-            if s:
-                strict.add(oid)
-            if s or "painting" in name or any(p in med for p in PAINT_MED):
-                broad.add(oid)
-    return strict, broad
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--info-dir", default="data/ground_truth")
-    ap.add_argument("--metobjects", default="data/MetObjects.csv")
+    ap.add_argument("--paint-testset", default="data/gt_paint/testset.json",
+                    help="committed Classification==Paintings query set (148)")
     ap.add_argument("--synth-root", default=SYNTH_ROOT)
     ap.add_argument("--out-dir", default="data/synth_dino")
     args = ap.parse_args()
@@ -109,20 +90,18 @@ def main():
     studio_feats = train_feats[np.array(studio_idx)]
     del train_feats
 
-    # ---- real painting test queries ----
+    # ---- real painting test queries: committed Classification=="Paintings" (148) ----
     ts = json.load(open(os.path.join(args.info_dir, "testset.json")))
     test_met_id = np.array([int(e["MET_id"]) if "MET_id" in e else -1 for e in ts])
-    strict, broad = painting_sets(args.metobjects)
-    is_broad = np.array([(l != -1) and (str(l) in broad) for l in test_met_id])
-    is_strict = np.array([(l != -1) and (str(l) in strict) for l in test_met_id])
-    print(f"painting test queries: strict {is_strict.sum()} | broad {is_broad.sum()}", flush=True)
+    paint_paths = {e["path"] for e in json.load(open(args.paint_testset))}   # 148 committed
+    is_paint = np.array([e["path"] in paint_paths for e in ts])
+    print(f"painting test queries (Classification==Paintings): {int(is_paint.sum())}", flush=True)
 
     print("loading test features...", flush=True)
     test_feats = load_split_full("test")
-    qidx = np.where(is_broad)[0]
+    qidx = np.where(is_paint)[0]
     pq_feats = test_feats[qidx]
     pq_met_id = test_met_id[qidx]
-    pq_strict = is_strict[qidx]
 
     os.makedirs(args.out_dir, exist_ok=True)
     out = os.path.join(args.out_dir, "real_dino_vitl16_aspect512.npz")
@@ -130,10 +109,8 @@ def main():
              studio_feats=studio_feats.astype(np.float16),
              studio_met_id=np.array(studio_met_id, dtype=np.int64),
              pq_feats=pq_feats.astype(np.float16),
-             pq_met_id=pq_met_id.astype(np.int64),
-             pq_strict=pq_strict.astype(bool))
-    print(f"wrote {out}\n  studio {studio_feats.shape} | painting-queries {pq_feats.shape} "
-          f"(strict {int(pq_strict.sum())})", flush=True)
+             pq_met_id=pq_met_id.astype(np.int64))
+    print(f"wrote {out}\n  studio {studio_feats.shape} | painting-queries {pq_feats.shape}", flush=True)
 
 
 if __name__ == "__main__":

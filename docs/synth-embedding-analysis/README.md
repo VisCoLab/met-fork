@@ -15,7 +15,7 @@ We compare three sets of images:
 |---|---|--:|
 | **synthetic** | our gallery renders — 4,952 paintings × 5 camera views | 24,760 |
 | **studio** | the catalog photo (`MET/<id>/0.jpg`) each render was built from | 4,952 |
-| **real** | real visitor photos of paintings from the Met test set | 221 |
+| **real** | real Met visitor photos of paintings — the committed `Classification == "Paintings"` query set | 148 |
 
 > **How to read the numbers.** Every comparison uses **cosine similarity**: we treat each image's
 > vector as a direction and measure how aligned two directions are (more aligned = more similar).
@@ -131,17 +131,17 @@ the distance between the *average* vector of each group:
 
 | distance between group averages | value |
 |---|--:|
-| studio ↔ real photo *(the gap we ultimately care about)* | **0.24** |
+| studio ↔ real photo *(the gap we ultimately care about)* | **0.22** |
 | synthetic **front** view ↔ studio | **0.15** |
-| synthetic front view ↔ real photo | 0.24 |
+| synthetic front view ↔ real photo | 0.23 |
 | synthetic `left upper` view ↔ studio | 0.30 |
 | synthetic `right upper` view ↔ studio | 0.62 |
 
 *Distance is "1 − cosine similarity" between the average vectors: 0 = identical direction, bigger = more
-different. As a yardstick, the real studio→photo gap is 0.24.*
+different. As a yardstick, the real studio→photo gap is 0.22.*
 
 The synthetic **front** view is actually *closer to the studio photos* (0.15) than the real photos are
-(0.24), and **no** synthetic view is any closer to real photos than the studio images already are. In
+(0.22), and **no** synthetic view is any closer to real photos than the studio images already are. In
 other words, **the renders look like clean studio shots, not like real visitor photos.** This fits what we
 saw in EXP-4 (adding synthetic data helped *all* query types): the benefit comes from **extra training
 variety**, not from the renders matching the real-photo "look".
@@ -194,7 +194,7 @@ on standing out from *other* paintings, not just resembling your own — and EXP
 - This is the **frozen, off-the-shelf** DINOv3 ViT-L — not our fine-tuned model and not the bigger 7B one.
 - We compare by **cosine similarity** on the raw vectors — not the whitening step the retrieval pipeline uses.
 - The random **lighting** isn't recorded in the metadata, so it couldn't be tested.
-- The real-photo set is small (221 painting photos).
+- The real-photo set is small (148 painting photos — the committed `Classification == "Paintings"` queries).
 
 ---
 
