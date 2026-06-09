@@ -41,9 +41,9 @@ can still find the right painting from a render, the render genuinely depicts th
 - **Camera angle dominates the result, by a huge margin.** Well-framed views work well — `left upper`
   **75.9%** and `front` **64.8%** R@1 — while the broken `right upper` view is essentially useless at
   **1.4%**. This is the **camera-framing bug** from EXP-3, here measured directly.
-- **A well-framed render is about as recognizable as a real photo.** On paintings, `front` renders hit
-  **70.5%** R@1 — almost exactly the **69.6%** accuracy this same model gets on *real* visitor photos of
-  paintings (the committed 148-query painting set). The clean views are doing their job.
+- **A well-framed render scores like a real photo.** On paintings, the `front` view essentially matches the
+  real painting queries on *every* metric — GAP⁻ 68.05 vs 67.86, ACC 70.49 vs 69.59, R@1 70.49 — same model,
+  scored the same way. The clean views are doing their job.
 - **Paintings score higher** than the full synthetic set (all-angles R@1 **40.0%** vs 36.9%; `front`
   **70.5%** vs 64.8%), as expected.
 - **Independent confirmation of the framing bug:** a completely different method (DINOv3 embeddings, EXP-7)
@@ -114,19 +114,24 @@ painting is actually a **painting test query**. We use the project's single comm
 renders). Same model, same database.
 
 The paper publishes **no painting breakdown**, so the baseline here is *our* step-1 model on the **148
-real** painting queries, set against the **610 synthetic** painting renders:
+real** painting queries — and we now score the **synthetic renders the same way** (kNN K=7/τ=50, GAP against
+the **same 18,316 real distractors**), so all six metrics are directly comparable:
 
 | Paintings (`Classification=="Paintings"`) | GAP | GAP⁻ | ACC | R@1 | R@5 | R@10 |
 |---|--:|--:|--:|--:|--:|--:|
-| **Ours** — step-1, real painting queries (148) | 39.50 | 67.86 | 69.59 | — | — | — |
-| **Ours** — step-1, synthetic painting renders (610) | — | — | — | **40.00** | **46.39** | **49.18** |
+| **Ours** — real painting queries (148) | 39.50 | 67.86 | 69.59 | — | — | — |
+| **Ours** — synthetic renders, all 5 views (610) | 22.28 | 36.68 | 40.00 | 40.00 | 46.39 | 49.18 |
+| **Ours** — synthetic renders, `front` only (122) | **40.91** | **68.05** | **70.49** | 70.49 | 80.33 | 81.97 |
 
-(GAP/GAP⁻/ACC on the 148 real queries; R@k on the 610 synthetic renders — different query sets, same model.)
-The synthetic paintings beat the full synthetic set on every view (all-angles R@1 40.0 vs 36.9; `front`
-70.5 vs 64.8; `left upper` 82.0 vs 75.9). The key cross-check: the **`front` view's synthetic R@1 = 70.49%**
-is essentially equal to the model's **69.59% ACC on the *real* painting photos** above — **a well-framed
-render is about as recognizable as a real photo.** The synthetic content is faithful; the limitation is the
-camera rig, not the rendering.
+(Real row = 148 real painting photos; synthetic rows = the renders, with GAP scored against the same 18,316
+real distractors. ACC == R@1 throughout because the τ=50 kNN vote follows the single nearest neighbour.)
+Two things stand out. **(1)** Across *all 5 views* the synthetic GAP⁻/ACC (36.68 / 40.00) sit far below the
+real painting queries (67.86 / 69.59) — but that is the **camera-framing bug** again: the broken `right upper`
+view alone scores GAP⁻ 0.01 / ACC 0.82 and the two `*bottom` views ~16–19 GAP⁻ (full per-view breakdown in
+`gap_summary.json`). **(2)** The well-framed **`front` view essentially matches the real painting photos on
+every metric** — GAP 40.91 vs 39.50, GAP⁻ 68.05 vs 67.86, ACC 70.49 vs 69.59 (and `left upper` is higher
+still, GAP⁻ 80.94 / ACC 81.97). So **a well-framed render is about as recognizable as a real visitor photo**
+— the synthetic *content* is faithful; the limitation is the camera rig, not the rendering.
 
 ---
 
@@ -170,11 +175,11 @@ regenerated.
 
 ## 6. Caveats
 
-- **Recall, not GAP — the paper comparison is contextual.** The synthetic renders have no distractors, so
-  R@1/5/10 are a pure recognition probe, **not** a like-for-like substitute for the paper's GAP/GAP⁻/ACC
-  (different metric *and* different query set). The §2/§3 tables line the two up only to give the synthetic
-  numbers a familiar yardstick — the honest bridge is the model's real-photo **ACC** (kNN-vote top-1) ≈
-  well-framed render **R@1** (nearest-neighbour top-1).
+- **The synthetic renders carry no distractors of their own.** For GAP we score them against the **same
+  18,316 real test distractors** as the real-painting queries (§3), so the synthetic vs. real-painting
+  GAP/GAP⁻/ACC are directly comparable. The only cross-metric gap is in §2: the *paper* never ran synthetic
+  retrieval, so its GAP/ACC (real queries) sits *beside*, not against, our synthetic recall. (ACC == R@1
+  throughout — the τ=50 kNN vote follows the nearest neighbour.)
 - **Per-angle spread is a framing artifact**, not a clean measurement of "domain difficulty by viewpoint" —
   the rig must be fixed first (§4).
 - **"Correct" = source class.** A render is judged against the single Met painting it was built from; if a
@@ -194,15 +199,18 @@ regenerated.
 sbatch synth_eval.slurm                     # job 7342800: COMPLETED in ~7 min on an H100
 # 2) CPU re-score only (descriptors already exist — no GPU); reads data/gt_paint/testset.json for the
 #    committed Classification=="Paintings" subset. Run via a standard-partition SLURM job, NOT the login node.
-.venv/bin/python scripts/eval_synthetic_retrieval.py   # job 7342900: ~5 min on a CPU node
+.venv/bin/python scripts/eval_synthetic_retrieval.py   # recall@k     — job 7342900, ~5 min CPU
+.venv/bin/python scripts/eval_synthetic_gap.py         # GAP/GAP-/ACC — job 7342968, ~4 min CPU
 ```
 
 Outputs (git-ignored `data/`):
 - `data/descriptors/synthetic/synth_descriptors.pkl` — per-render descriptors + source Met id + camera angle.
-- `data/descriptors/synthetic/retrieval_summary.json` — **every number in this doc**.
+- `data/descriptors/synthetic/retrieval_summary.json` — recall@k (overall + per angle + paintings).
+- `data/descriptors/synthetic/gap_summary.json` — GAP / GAP⁻ / ACC for the painting renders (all-views + per view).
 
 Code: [`scripts/extract_synthetic.py`](../../scripts/extract_synthetic.py) (step-1 model → render descriptors) ·
-[`scripts/eval_synthetic_retrieval.py`](../../scripts/eval_synthetic_retrieval.py) (retrieval + recall@k + the JSON dump).
+[`scripts/eval_synthetic_retrieval.py`](../../scripts/eval_synthetic_retrieval.py) (recall@k) ·
+[`scripts/eval_synthetic_gap.py`](../../scripts/eval_synthetic_gap.py) (GAP/GAP⁻/ACC vs the same distractors).
 
 [^name]: The checkpoint is named after the paper's method, **Con-Syn+Real-closest**. There, "Syn" means
 the contrastive loss's *augmented-view* positive (a standard data-augmentation trick), **not** our
