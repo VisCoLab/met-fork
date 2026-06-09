@@ -104,6 +104,38 @@ ax.legend(loc="upper left", frameon=False, fontsize=9.5,
 fig.savefig(f"{OUT}/baseline_vs_synth.png")
 plt.close(fig)
 
+# =====================================================================
+# Figure 3 — the full progression: R18(+synthetic)  ->  DINOv3(+re-rank)
+# DINOv3 numbers are from EXPERIMENTS.md EXP-6 (frozen backbones eval'd in OUR
+# kNN-softmax pipeline; DINOv3-7B at its best K=5, τ=20). grey = off-the-shelf /
+# reproduced reference; teal = what we added on top (synthetic data; geometric re-rank).
+# =====================================================================
+labels3 = ["Paper\nbest", "R18\nbaseline", "R18\n+synth",
+           "DINOv3-L\nzero-shot", "DINOv3-7B\nzero-shot", "DINOv3-L\n+re-rank"]
+gap3 = [36.1, 35.97, 38.15, 48.16, 52.11, 53.07]
+ours = [False, False, True, False, False, True]   # teal where we contributed
+
+fig, ax = plt.subplots(figsize=(8.8, 4.7))
+bars = ax.bar(labels3, gap3, color=[CLEAN if o else GREY for o in ours],
+              edgecolor="white", width=0.70, zorder=3)
+annotate(ax, bars, dy=0.5, fs=10, weight="bold")
+
+ax.axvline(2.5, color="#d6d6d6", lw=1.0, zorder=1)               # R18 | DINOv3 divider
+ax.text(1.0, 58.0, "ResNet-18", ha="center", fontsize=10, color="#777", fontweight="bold")
+ax.text(4.0, 58.0, "DINOv3 (frozen)", ha="center", fontsize=10, color="#777", fontweight="bold")
+
+ax.set_ylim(0, 62)
+ax.set_ylabel("Full-benchmark GAP")
+ax.set_title("The backbone is the bigger lever — our re-rank tops it off")
+ax.grid(axis="y", color="#e6e6e6", zorder=0)
+ax.set_axisbelow(True)
+legend = [Patch(fc=GREY, label="off-the-shelf / reproduced reference"),
+          Patch(fc=CLEAN, label="our contribution (synthetic data · geometric re-rank)")]
+ax.legend(handles=legend, loc="upper left", frameon=False, fontsize=9.5,
+          bbox_to_anchor=(0.0, 0.80))
+fig.savefig(f"{OUT}/progression.png")
+plt.close(fig)
+
 print("wrote:")
-for f in ("gap_by_config.png", "baseline_vs_synth.png"):
+for f in ("gap_by_config.png", "baseline_vs_synth.png", "progression.png"):
     print(" ", os.path.join(OUT, f))
