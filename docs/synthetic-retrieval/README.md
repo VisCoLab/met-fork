@@ -42,9 +42,10 @@ can still find the right painting from a render, the render genuinely depicts th
   **75.9%** and `front` **64.8%** R@1 — while the broken `right upper` view is essentially useless at
   **1.4%**. This is the **camera-framing bug** from EXP-3, here measured directly.
 - **A well-framed render is about as recognizable as a real photo.** On paintings, `front` renders hit
-  **68.8%** R@1 — almost exactly the **69.4%** accuracy this same model gets on *real* visitor photos of
-  paintings (EXP-2). The clean views are doing their job.
-- **Paintings score slightly higher** than the full synthetic set (~+1–2 pts), as expected.
+  **70.5%** R@1 — almost exactly the **69.6%** accuracy this same model gets on *real* visitor photos of
+  paintings (the committed 148-query painting set). The clean views are doing their job.
+- **Paintings score higher** than the full synthetic set (all-angles R@1 **40.0%** vs 36.9%; `front`
+  **70.5%** vs 64.8%), as expected.
 - **Independent confirmation of the framing bug:** a completely different method (DINOv3 embeddings, EXP-7)
   flags the exact same `right upper` view as broken.
 
@@ -91,20 +92,22 @@ between best and worst view — almost entirely a framing artifact, not a proper
 ## 3. Paintings only (the subset we care about)
 
 The synthetic data exists to help recognize **paintings**, so we restrict to the renders whose source
-painting is one of the **painting test classes** (strict = 138 classes / broad = 176; the strict/broad
-distinction is the painting definition from EXP-2). Same model, same database.
+painting is actually a **painting test query**. We use the project's single committed painting definition
+— Met Open Access **`Classification == "Paintings"`** — which yields **148 painting test queries** spanning
+**122 distinct classes**; the painting subset is the renders of those 122 classes (122 × 5 views = 610
+renders). Same model, same database.
 
 | group | N | R@1 (all angles) | R@1 `front` | R@1 `left upper` |
 |---|--:|--:|--:|--:|
 | all synthetic | 24,760 | 36.93 | 64.84 | 75.85 |
-| **paintings — strict (138)** | 690 | 38.26 | **68.84** | 79.71 |
-| **paintings — broad (176)** | 880 | 39.09 | 71.02 | 81.25 |
+| **paintings (`Classification=="Paintings"`, 122 classes)** | 610 | **40.00** | **70.49** | **81.97** |
 
-Paintings score **~1–2 points higher** than the full set across the board — the same picture, slightly
-sharper. The key cross-check is the **`front` view on strict paintings: R@1 = 68.84%**, essentially equal
-to the **69.36% accuracy this same model achieves on *real* visitor photos of paintings** (EXP-2). In
-other words, **a well-framed render is about as recognizable as a real photo** — the synthetic content is
-faithful; the limitation is the camera rig, not the rendering.
+Paintings score **~3 points higher** on all-angles R@1 (40.0 vs 36.9) and higher on every view — the same
+picture, slightly sharper. The key cross-check is the **`front` view: R@1 = 70.49%**, essentially equal to
+the **69.59% accuracy this same model achieves on *real* visitor photos of paintings** (the same 148-query
+`Classification=="Paintings"` slice, scored on the full 397k DB). In other words, **a well-framed render is
+about as recognizable as a real photo** — the synthetic content is faithful; the limitation is the camera
+rig, not the rendering.
 
 ---
 
@@ -136,7 +139,7 @@ regenerated.
 - **The renders genuinely depict the right paintings.** A model trained only on real studio photos finds
   the correct painting from a render up to 76% of the time (best view) — the synthetic→real content gap is
   crossable, which is the prerequisite for the synthetic data being useful at all.
-- **Well-framed render ≈ real photo.** `front` paintings (68.8%) ≈ real-photo accuracy (69.4%): the clean
+- **Well-framed render ≈ real photo.** `front` paintings (70.5%) ≈ real-photo accuracy (69.6%): the clean
   views are as informative as actual visitor photos, so the dataset's *content* is sound.
 - **The rig, not the renderer, is the bottleneck.** The only thing standing between "37% overall" and
   "~70% overall" is the camera framing on 3 of the 5 views.
@@ -164,9 +167,12 @@ regenerated.
 ## 7. How to reproduce
 
 ```bash
-# One GPU job: extract multi-scale descriptors for all 24,760 renders with the step-1 model,
-# then retrieve vs the 397k studio DB (recall@k, overall + per angle + painting subsets).
+# 1) GPU: extract multi-scale descriptors for all 24,760 renders with the step-1 model, then
+#    retrieve vs the 397k studio DB (recall@k, overall + per angle + the committed painting subset).
 sbatch synth_eval.slurm                     # job 7342800: COMPLETED in ~7 min on an H100
+# 2) CPU re-score only (descriptors already exist — no GPU); reads data/gt_paint/testset.json for the
+#    committed Classification=="Paintings" subset. Run via a standard-partition SLURM job, NOT the login node.
+.venv/bin/python scripts/eval_synthetic_retrieval.py   # job 7342900: ~5 min on a CPU node
 ```
 
 Outputs (git-ignored `data/`):

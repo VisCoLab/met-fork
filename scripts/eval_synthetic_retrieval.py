@@ -34,13 +34,16 @@ def recalls(mask):
     r10 = np.mean([gt[i] in sub[i, :10] for i in range(n)]) * 100
     return n, r1, r5, r10
 
-# query groups: all synthetic, then the step-2 painting test-class subsets (if the lists exist)
-groups = [("ALL synthetic (4,952 paintings)", np.ones(len(mids), bool))]
-for nm, f in (("step-2 STRICT (138 painting test-classes)", "data/synth_gen/step2_painting_train_images_strict.json"),
-              ("step-2 BROAD  (176 painting test-classes)", "data/synth_gen/step2_painting_train_images_broad.json")):
-    if os.path.exists(f):
-        ids = {int(p.split("/MET/")[1].split("/")[0]) for p in json.load(open(f))}
-        groups.append((nm, np.isin(mids, list(ids))))
+# query groups: all synthetic, then the committed painting subset.
+# Committed painting def = Met Open Access Classification=="Paintings" (the 148 painting test
+# queries in data/gt_paint/testset.json, spanning 122 distinct classes). Painting subset = renders
+# whose source class is one of those test-query classes. (The old strict/broad subsets were dropped.)
+groups = [("ALL synthetic", np.ones(len(mids), bool))]
+gt_paint = os.path.join(REPO, "data/gt_paint/testset.json")
+if os.path.exists(gt_paint):
+    paint_cls = {int(e["MET_id"]) for e in json.load(open(gt_paint)) if "MET_id" in e}
+    groups.append((f'paintings (Classification=="Paintings", {len(paint_cls)} test classes)',
+                   np.isin(mids, list(paint_cls))))
 
 def row(mask):
     n, r1, r5, r10 = recalls(mask)
