@@ -1,6 +1,6 @@
 #!/bin/bash
 # Finish step 1: extract multi-scale descriptors from our trained epoch-10 checkpoint,
-# then evaluate with the full K x tau grid. Submit: sbatch extract_eval.slurm
+# then evaluate with the full K x tau grid. Submit: sbatch slurm/extract_eval.slurm
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1

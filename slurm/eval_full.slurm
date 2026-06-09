@@ -3,7 +3,7 @@
 # the original 397k studio DB + the full test/val queries (incl. distractors), then full-grid
 # eval (GAP / GAP- / ACC, tuned on val) + the paintings-slice eval. Comparable to the paper
 # (GAP 36.1) and to EXP-2's painting slice.
-# usage: sbatch --job-name=met-full-<tag> eval_full.slurm <model_dir> [epoch=10] [tag=full]
+# usage: sbatch --job-name=met-full-<tag> slurm/eval_full.slurm <model_dir> [epoch=10] [tag=full]
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1
@@ -14,7 +14,7 @@
 
 cd "$SLURM_SUBMIT_DIR"; mkdir -p logs
 export TORCH_HOME="$SLURM_SUBMIT_DIR/data/torch_home"; export PYTHONUNBUFFERED=1
-MODELDIR="${1:?usage: sbatch eval_full.slurm <model_dir> [epoch] [tag]}"; EP="${2:-10}"; TAG="${3:-full}"
+MODELDIR="${1:?usage: sbatch slurm/eval_full.slurm <model_dir> [epoch] [tag]}"; EP="${2:-10}"; TAG="${3:-full}"
 CKPT=$(ls $MODELDIR/*_epoch:_$EP 2>/dev/null | head -1)
 OUT="data/descriptors_full_${TAG}"; D="$OUT/r18_contr_loss_gem_fc_swsl_ms"
 echo "model=$MODELDIR epoch=$EP tag=$TAG ckpt=$CKPT start=$(date)"

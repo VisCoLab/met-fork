@@ -2,8 +2,8 @@
 # DINOv3 adaptation REUSING /met's contrastive recipe (Embedder+ContrastiveLoss+pair
 # mining+validate), backbone swapped to DINOv3-ViT-L. head = frozen backbone + trained
 # projector; lora = + LoRA adapters. Data: studio (Met train) or synth (gallery renders).
-# usage: sbatch --job-name=met-dinoL-head-studio ftdino.slurm studio head
-#        sbatch --job-name=met-dinoL-lora-synth   ftdino.slurm synth  lora
+# usage: sbatch --job-name=met-dinoL-head-studio slurm/ftdino.slurm studio head
+#        sbatch --job-name=met-dinoL-lora-synth   slurm/ftdino.slurm synth  lora
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1
@@ -12,8 +12,8 @@
 #SBATCH --time=2-00:00:00
 #SBATCH --output=logs/%x-%j.out
 
-DATA="${1:?usage: ftdino.slurm <studio|synth> <head|lora>}"
-METHOD="${2:?usage: ftdino.slurm <studio|synth> <head|lora>}"
+DATA="${1:?usage: slurm/ftdino.slurm <studio|synth> <head|lora>}"
+METHOD="${2:?usage: slurm/ftdino.slurm <studio|synth> <head|lora>}"
 case "$DATA" in
   studio) INFO=data/ground_truth; IMROOT=data/ ;;
   synth)  INFO=data/gt_synth;     IMROOT=data/aug ;;

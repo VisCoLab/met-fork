@@ -1,6 +1,6 @@
 #!/bin/bash
 # Clean ablation: train R18-SWSL Con-Syn+Real-closest FROM SWSL for 10 epochs on
-# Met studio + synthetic gallery data. Identical recipe to step-1 (train.slurm) except
+# Met studio + synthetic gallery data. Identical recipe to step-1 (slurm/train.slurm) except
 # the augmented training set -> directly comparable to step-1 (GAP 35.97, no synthetic).
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla

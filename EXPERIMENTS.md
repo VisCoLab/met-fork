@@ -62,8 +62,8 @@ All eval'd identically: multi-scale descriptors, **original 397k studio DB**, re
 - **Lesson:** `knn_eval.py --autotune` defaults `--k 1` (tunes only τ) → degenerate τ=500, **GAP ≈ 23**. Must sweep the full K grid → `scripts/eval_fullgrid.py`. ACC is unaffected by the bug.
 
 ### EXP-1 — step 1, from-scratch reproduction ✅
-- Train: `sbatch train.slurm` → job **7313742** (H100, 10 epochs, 21h36m). R18-SWSL Con-Syn+Real-closest, `--net r18_sw-sup --pretrained --pairs_type new_pos+new_neg --emb_proj --pca`, paper defaults (lr 1e-7, sched 6×0.1, margin 1.8, 64 pairs/batch). **`--net r18_sw-sup` is required** (default `resnet18` → ImageNet model, GAP 32.5).
-- Extract+eval: `extract_eval.slurm` (job 7318393) → best **K=7, τ=50**.
+- Train: `sbatch slurm/train.slurm` → job **7313742** (H100, 10 epochs, 21h36m). R18-SWSL Con-Syn+Real-closest, `--net r18_sw-sup --pretrained --pairs_type new_pos+new_neg --emb_proj --pca`, paper defaults (lr 1e-7, sched 6×0.1, margin 1.8, 64 pairs/batch). **`--net r18_sw-sup` is required** (default `resnet18` → ImageNet model, GAP 32.5).
+- Extract+eval: `slurm/extract_eval.slurm` (job 7318393) → best **K=7, τ=50**.
 - **Result: GAP 35.97 / GAP⁻ 52.14 / ACC 54.64** vs paper 36.1 / 52.4 / 55.0 (authors' 36.10/52.41/55.03). Reproduced within training variance. ✅
 
 ### EXP-2 — step 2, paintings-only test ✅
@@ -77,7 +77,7 @@ Step-1 model, reuse **K=7, τ=50**; painting set = the committed **148** queries
 **Takeaway:** paintings recognized markedly better than the average Met query (ACC 69% vs 55%) — the tractable, high-value subset. This is the paintings baseline steps 3–4 must beat.
 
 ### EXP-3 — step 3, synthetic gallery images as queries ✅ (with caveat)
-Step-1 model; synthetic renders as queries vs the 397k studio DB (correct = source Met class). Recall@k. `synth_eval.slurm` (`scripts/extract_synthetic.py` → `scripts/eval_synthetic_retrieval.py`).
+Step-1 model; synthetic renders as queries vs the 397k studio DB (correct = source Met class). Recall@k. `slurm/synth_eval.slurm` (`scripts/extract_synthetic.py` → `scripts/eval_synthetic_retrieval.py`).
 
 | angle | N | R@1 | R@5 | R@10 |
 |---|--:|--:|--:|--:|
@@ -92,7 +92,7 @@ Restricting synthetic queries to the committed painting classes (`Classification
 
 ⚠️ **Camera-framing artifact, not a clean domain result.** Verified by viewing renders: `right upper` is edge-on/grazing (painting a barely-visible sliver → 1.41%); `left upper`/`front` are well-framed (65–76% R@1). So the per-angle spread tracks framing, and "all angles" 36.93 is dragged down by the broken views. **Cross-check:** the well-framed synthetic **front R@1 64.84** approaches **step-2 real-photo ACC 69.59** — a well-framed render is about as recognizable as a real photo. **Action:** fix the `right upper` (and `*bottom`) camera poses + regenerate, then re-run for a clean per-angle measurement.
 
-**Standalone write-up: [`docs/synthetic-retrieval/`](docs/synthetic-retrieval/README.md)** — re-ran as job 7342800 (`synth_eval.slurm`, ~7 min H100); numbers reproduced exactly. Every number traces to `data/descriptors/synthetic/retrieval_summary.json` (new JSON dump added to `eval_synthetic_retrieval.py`).
+**Standalone write-up: [`docs/synthetic-retrieval/`](docs/synthetic-retrieval/README.md)** — re-ran as job 7342800 (`slurm/synth_eval.slurm`, ~7 min H100); numbers reproduced exactly. Every number traces to `data/descriptors/synthetic/retrieval_summary.json` (new JSON dump added to `eval_synthetic_retrieval.py`).
 
 ### EXP-4 — step 4, train/fine-tune WITH synthetic data ✅
 Question: does adding the synthetic gallery data to training improve recognition of **real painting photos** (step-2 set) without hurting the rest? Eval DB stays the original studio set → directly comparable.
@@ -104,7 +104,7 @@ Question: does adding the synthetic gallery data to training improve recognition
 | Combined FT | fine-tune ep10, 5 ep @1e-7 | studio + synthetic | train 7330025 / eval 7332888 | ✅ GAP 37.38 |
 | **From-scratch +synth** | from-SWSL, 10 ep | studio + synthetic | train 7330059 / eval 7342026 | ✅ **GAP 38.15** — clean A/B vs step 1 |
 
-Fine-tunes load epoch-10 weights via **`--init_weights`** (added to `train_contrastive.py`) with a fresh optimizer @ **LR 1e-7** — a literal `--resume` runs at the decayed **1e-8 ≈ frozen** (no-op). `finetune.slurm <combined|synth>`; from-scratch is `train_synth.slurm`. Eval: `extract_eval_ft.slurm <variant>`.
+Fine-tunes load epoch-10 weights via **`--init_weights`** (added to `train_contrastive.py`) with a fresh optimizer @ **LR 1e-7** — a literal `--resume` runs at the decayed **1e-8 ≈ frozen** (no-op). `slurm/finetune.slurm <combined|synth>`; from-scratch is `slurm/train_synth.slurm`. Eval: `slurm/extract_eval_ft.slurm <variant>`.
 
 **Synth-only FT result** (original studio DB + real queries; best K=15, τ=50):
 
@@ -143,12 +143,12 @@ domain* (studio↔synthetic) via `mine_positive` on the cross-domain subset; cla
 cross-domain partner fall back to standard `new_pos`, singletons self-pair. Directly optimizes the
 studio→gallery-photo bridge. Fires for the **4,952** painting classes that have both a studio and a
 synthetic image (verified on `data/gt_aug`). Mining the *closest* render also sidesteps the broken
-grazing-view renders (they sit far from the studio image). Recipe = `train_synth.slurm` (from-SWSL,
+grazing-view renders (they sit far from the studio image). Recipe = `slurm/train_synth.slurm` (from-SWSL,
 10 ep, combined manifest) with only the pairs_type changed → **clean A/B vs scratch+synth** (job
-7330059). Job `train_crossdomain.slurm` → **7332307 (queued**, waiting on a GPU). Mining logic
+7330059). Job `slurm/train_crossdomain.slurm` → **7332307 (queued**, waiting on a GPU). Mining logic
 smoke-tested (tiny mixed manifest, asserts cross/fallback/singleton/negatives). Eval TBD (epoch-10
 ckpt → `data/models/r18SWSL_crossdomain/`; needs the same eval tweak as scratch+synth, not the
-`extract_eval_ft.slurm` epoch-5 globber).
+`slurm/extract_eval_ft.slurm` epoch-5 globber).
 
 **Main method:** see EXP-6 (pivoted to DINOv3 + geometric re-rank).
 
@@ -160,7 +160,7 @@ paper's own claim** (Met GAP = DINOv2 40.0 **+10.8** ≈ 50.8) — NOT our contr
 geometric re-rank on top.
 
 **Step 2 — DINOv3 reproduced in our pipeline** (`scripts/build_dinov3_pkl.py` + `eval_fullgrid.py`,
-`eval_dinov3.slurm` job 7332349): assemble raw DINOv3 CLS feats (aspect512, 4096-d) → our PCAw
+`slurm/eval_dinov3.slurm` job 7332349): assemble raw DINOv3 CLS feats (aspect512, 4096-d) → our PCAw
 4096→512 + faiss kNN + GAP. Reproduces the paper → bridge faithful; earlier k=1 "0.68" was the
 degeneracy artifact (our full grid picks K=5).
 
@@ -177,7 +177,7 @@ over the strong CLS top-50; `scripts/patchmatch_rerank.py` job 7332350 → PM sc
 - *Take 1 — additive into pre-softmax sim:* **NULL** (tuner picks λ=0). The softmax saturates (conf≈1
   for true AND distractor), washing the signal out.
 - *Take 2 — fuse into the CONFIDENCE, ACC frozen* (`scripts/rerank_confidence_fusion.py`,
-  `rerank_fusion.slurm`): **works.**
+  `slurm/rerank_fusion.slurm`): **works.**
 
 | DINOv3-ViT-L (Met protocol) | GAP | GAP⁻ | ACC |
 |---|--:|--:|--:|
@@ -200,7 +200,7 @@ to the real domains? Real side **reuses art-research's identical ViT-L Met featu
 aspect512 preprocessing): studio sources `MET/<id>/0.jpg` (4,952, paired) + real painting test queries
 (**148**, committed `Classification=="Paintings"` — the project-wide def). Pipeline: `scripts/extract_synth_dino.py` (GPU job **7333958**, 24,760×1024
 in **2 min @275 img/s**, batched since renders are all 512²) → `scripts/assemble_real_dino.py` +
-`scripts/analyze_synth_dino.py` (CPU `analysis_synth_dino.slurm`, job 7333977). Factors parsed by
+`scripts/analyze_synth_dino.py` (CPU `slurm/analysis_synth_dino.slurm`, job 7333977). Factors parsed by
 `scripts/synth_meta.py`. Artifacts: `data/synth_dino/analysis/{summary.json, 6 PNGs}`.
 **Standalone write-up with all figures: [`docs/synth-embedding-analysis/`](docs/synth-embedding-analysis/README.md).**
 
@@ -239,7 +239,7 @@ doesn't perfectly track R@1 (retrievability = *discriminability*, not raw simila
 ## How to evaluate any model (the reusable recipe)
 ```bash
 # GPU job: extract MS descriptors (original studio DB + real queries) then full-grid + paintings eval
-sbatch --job-name=met-fteval-<name> extract_eval_ft.slurm <combined|synth>   # for fine-tuned ckpts
+sbatch --job-name=met-fteval-<name> slurm/extract_eval_ft.slurm <combined|synth>   # for fine-tuned ckpts
 # or manually for any checkpoint:
 .venv/bin/python -m code.examples.extract_descriptors data/descriptors_<name> \
     --net r18_contr_loss_gem_fc_swsl --netpath <ckpt> --ms --info_dir data/ground_truth --im_root data/ --gpuid 0
@@ -260,12 +260,12 @@ sbatch --job-name=met-fteval-<name> extract_eval_ft.slurm <combined|synth>   # f
 ## Repo artifacts
 
 **Tracked (in git):**
-- SLURM jobs: `train.slurm` (step 1), `extract_eval.slurm` (eval step 1), `finetune.slurm` (fine-tune combined/synth), `train_synth.slurm` (from-scratch +synth), `extract_eval_ft.slurm` (eval fine-tuned), `synth_eval.slurm` (step 3).
+- SLURM jobs: `slurm/train.slurm` (step 1), `slurm/extract_eval.slurm` (eval step 1), `slurm/finetune.slurm` (fine-tune combined/synth), `slurm/train_synth.slurm` (from-scratch +synth), `slurm/extract_eval_ft.slurm` (eval fine-tuned), `slurm/synth_eval.slurm` (step 3).
 - `scripts/eval_fullgrid.py` — full-K-grid eval (every model). `scripts/eval_paintings.py` — paintings-subset eval.
 - `scripts/extract_synthetic.py` + `scripts/eval_synthetic_retrieval.py` — step-3 synthetic retrieval.
 - `scripts/count_paintings.py` — painting counts (Met Open Access join). `scripts/build_finetune_data.py` — augmented manifests + image-root.
 - `scripts/smoke_gpu.py` — GPU + CPU-faiss env smoke test.
-- **EXP-7** (DINOv3 embedding-structure analysis): `scripts/synth_meta.py` (per-folder procedural factors), `scripts/extract_synth_dino.py` (`extract_synth_dino.slurm`), `scripts/assemble_real_dino.py` + `scripts/analyze_synth_dino.py` (`analysis_synth_dino.slurm`). Run in `.venv-dino` (+ scikit-learn/matplotlib).
+- **EXP-7** (DINOv3 embedding-structure analysis): `scripts/synth_meta.py` (per-folder procedural factors), `scripts/extract_synth_dino.py` (`slurm/extract_synth_dino.slurm`), `scripts/assemble_real_dino.py` + `scripts/analyze_synth_dino.py` (`slurm/analysis_synth_dino.slurm`). Run in `.venv-dino` (+ scikit-learn/matplotlib).
 - `code/`: faiss→CPU patch, `extract_descriptors.py` weights_only fix, `train_contrastive.py` `--init_weights`.
 - `reference/README.md` — paper targets + method↔`pairs_type` mapping.
 

@@ -35,7 +35,7 @@ dataset** — 24,760 Blender gallery renders of 4,898→4,952 Met paintings ×5 
 known camera-framing bug makes the `right upper` view near-useless). Reusable helpers live in
 [`scripts/`](scripts/) (`eval_fullgrid.py` = the correct full-K-grid eval, `eval_paintings.py`,
 `extract_synthetic.py` + `eval_synthetic_retrieval.py`, `count_paintings.py`, `build_finetune_data.py`);
-SLURM jobs are the repo-root `*.slurm` files.
+SLURM jobs live in [`slurm/`](slurm/).
 
 ## HPC environment (PCSS Eagle) — how to run
 
@@ -67,7 +67,7 @@ results). The full proven recipe + results are in [`EXPERIMENTS.md`](EXPERIMENTS
 | Action | Command |
 |---|---|
 | Interactive GPU shell | `srun --account=pl0896-03 -p <gpu_partition> --gpus-per-node=1 --time=1:00:00 --pty bash` |
-| Submit a batch job | `sbatch train.slurm` |
+| Submit a batch job | `sbatch slurm/train.slurm` |
 | My queue | `squeue -u $USER` |
 | Cancel | `scancel <jobid>` |
 | Post-run efficiency | `seff <jobid>` |
@@ -77,7 +77,7 @@ GPU jobs for grant `pl0896-03` (QOS `normal,tesla`) go to **`--partition=tesla`*
 **GRES type** — `--gres=gpu:h100:1` (H100, fast/plentiful) or `--gres=gpu:tesla:1` (V100) — **not**
 `--constraint`. CPU-only jobs → `--partition=standard`. (`proxima` is not in this grant's QOS.)
 
-The committed **[`train.slurm`](train.slurm)** reproduces the paper's best single model (R18-SWSL
+The committed **[`slurm/train.slurm`](slurm/train.slurm)** reproduces the paper's best single model (R18-SWSL
 Con-Syn+Real-closest, target **GAP 36.1**):
 
 ```bash
@@ -99,7 +99,7 @@ export TORCH_HOME="$SLURM_SUBMIT_DIR/data/torch_home"   # cached SWSL weights ->
 
 **`--net r18_sw-sup` is required** for the SWSL model (GAP 36.1) — the default `resnet18` trains the
 ImageNet model (GAP 32.5). `--gpuid 0` is correct: SLURM exposes the one granted GPU as device 0 (the
-code sets `CUDA_VISIBLE_DEVICES` from `--gpuid`). Submit with `sbatch train.slurm`. **Eval needs the
+code sets `CUDA_VISIBLE_DEVICES` from `--gpuid`). Submit with `sbatch slurm/train.slurm`. **Eval needs the
 full K-grid** — via [`scripts/eval_fullgrid.py`](scripts/eval_fullgrid.py) (the README's `knn_eval --autotune`
 under-tunes — it only sweeps τ at K=1) — see [`EXPERIMENTS.md`](EXPERIMENTS.md).
 

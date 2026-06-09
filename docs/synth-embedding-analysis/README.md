@@ -204,9 +204,9 @@ Run in `.venv-dino` (DINOv3 + `transformers`; the analysis also needs `scikit-le
 
 ```bash
 # 1) compute DINOv3 ViT-L vectors for the 24,760 renders (GPU, ~2 min on an H100)
-sbatch extract_synth_dino.slurm
+sbatch slurm/extract_synth_dino.slurm
 # 2) gather the real reference vectors + run the analysis (CPU)
-sbatch analysis_synth_dino.slurm
+sbatch slurm/analysis_synth_dino.slurm
 # -> data/synth_dino/analysis/{summary.json, *.png}
 ```
 

@@ -230,17 +230,17 @@ of this doc — **does adapting DINOv3 on our synthetic data help further?** —
 .venv/bin/python scripts/build_finetune_data.py      # -> data/gt_aug, data/aug
 
 # 2) train the clean A/B: from SWSL, 10 epochs, studio + synthetic   (H100, ~23 h)
-sbatch train_synth.slurm                             # job 7330059  -> data/models/r18SWSL_scratch_synth
+sbatch slurm/train_synth.slurm                             # job 7330059  -> data/models/r18SWSL_scratch_synth
 
 # 3) evaluate it exactly like step 1 (MS descriptors over the ORIGINAL studio DB, full K×τ grid)
-sbatch extract_eval_scratch.slurm                    # job 7342026  -> GAP 38.15 / GAP⁻ 55.49 / ACC 58.23
+sbatch slurm/extract_eval_scratch.slurm                    # job 7342026  -> GAP 38.15 / GAP⁻ 55.49 / ACC 58.23
 
 # 4) the figures in this doc (CPU; run via SLURM, not the login node)
 srun --account=pl0896-03 --partition=standard --time=0:10:00 --mem=4G \
     .venv-dino/bin/python scripts/plot_synthetic_training.py
 ```
 
-The two fine-tune controls are `finetune.slurm <synth|combined>` (train) + `extract_eval_ft.slurm
+The two fine-tune controls are `slurm/finetune.slurm <synth|combined>` (train) + `slurm/extract_eval_ft.slurm
 <variant>` (eval), jobs 7330026 / 7330036 (synth) and 7330025 / 7332888 (combined).
 
 **DINOv3 backbone + re-rank (§5–6)** — run in `.venv-dino`; DINOv3 features are reused from the sibling
@@ -248,19 +248,19 @@ The two fine-tune controls are `finetune.slurm <synth|combined>` (train) + `extr
 
 ```bash
 # zero-shot DINOv3 in our pipeline (CLS features -> PCA-whiten -> kNN -> GAP)
-sbatch eval_dinov3.slurm                             # job 7332349  -> ViT-L 48.16, 7B 52.11
+sbatch slurm/eval_dinov3.slurm                             # job 7332349  -> ViT-L 48.16, 7B 52.11
 # geometric re-rank: patch matches over the CLS top-50, fused into the confidence as a gate
-sbatch rerank_fusion.slurm                           # -> ViT-L + gate 53.07
+sbatch slurm/rerank_fusion.slurm                           # -> ViT-L + gate 53.07
 # DINOv3 fine-tuning ablation (head-only / LoRA, on studio / synthetic)  -- running now
-sbatch --job-name=met-dinoL-head-synth ftdino.slurm synth head      # (+ lora; + studio variants)
+sbatch --job-name=met-dinoL-head-synth slurm/ftdino.slurm synth head      # (+ lora; + studio variants)
 ```
 
 Code: [`scripts/build_finetune_data.py`](../../scripts/build_finetune_data.py) ·
-[`train_synth.slurm`](../../train_synth.slurm) · [`extract_eval_scratch.slurm`](../../extract_eval_scratch.slurm) ·
+[`slurm/train_synth.slurm`](../../slurm/train_synth.slurm) · [`slurm/extract_eval_scratch.slurm`](../../slurm/extract_eval_scratch.slurm) ·
 [`scripts/eval_fullgrid.py`](../../scripts/eval_fullgrid.py) · [`scripts/eval_paintings.py`](../../scripts/eval_paintings.py) ·
 [`scripts/plot_synthetic_training.py`](../../scripts/plot_synthetic_training.py) · DINOv3:
 [`scripts/build_dinov3_pkl.py`](../../scripts/build_dinov3_pkl.py) ·
 [`scripts/patchmatch_rerank.py`](../../scripts/patchmatch_rerank.py) ·
 [`scripts/rerank_confidence_fusion.py`](../../scripts/rerank_confidence_fusion.py) ·
-[`ftdino.slurm`](../../ftdino.slurm).
+[`slurm/ftdino.slurm`](../../slurm/ftdino.slurm).
 Every number above is recorded in [`EXPERIMENTS.md`](../../EXPERIMENTS.md) (EXP-1, EXP-4, EXP-6).

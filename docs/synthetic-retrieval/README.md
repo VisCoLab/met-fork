@@ -178,7 +178,7 @@ should wait until the `right upper` (and `*bottom`) poses are fixed and the data
 
 ```bash
 # 1) GPU: extract multi-scale descriptors for all 24,760 renders with the step-1 model.
-sbatch synth_eval.slurm                              # job 7342800: ~7 min on an H100 (extract + recall@k)
+sbatch slurm/synth_eval.slurm                              # job 7342800: ~7 min on an H100 (extract + recall@k)
 # 2) CPU re-scores (descriptors already exist — no GPU). Run via a standard-partition SLURM job, NOT login.
 .venv/bin/python scripts/eval_synthetic_retrieval.py # recall@k (full DB)            — job 7342900, ~5 min
 .venv/bin/python scripts/eval_synthetic_gap.py       # GAP/GAP-/ACC, full DB (Table A) — job 7342973, ~8 min

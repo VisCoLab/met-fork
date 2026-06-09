@@ -72,5 +72,5 @@ for tag, n in SCALE:
     n_cls = len({e["id"] for e in entries})
     print(f"  {tag:>9}: synth {n:>6,} imgs (x{n / TOTAL:.2f} budget) / {n_cls:,} classes -> data/gt_paint_{tag}")
 
-print("\ntrain mix:     sbatch --job-name=met-tr-<tag> paint_train.slurm data/gt_paint_mix_<tag> data/aug paint_<tag>")
-print("train scaling: sbatch --job-name=met-tr-<tag> paint_train.slurm data/gt_paint_<tag>     data/aug paint_<tag>")
+print("\ntrain mix:     sbatch --job-name=met-tr-<tag> slurm/paint_train.slurm data/gt_paint_mix_<tag> data/aug paint_<tag>")
+print("train scaling: sbatch --job-name=met-tr-<tag> slurm/paint_train.slurm data/gt_paint_<tag>     data/aug paint_<tag>")

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Re-score the 4 R18 models' FULL-benchmark painting slice under the COMMITTED
 # Classification=="Paintings" (148 queries, data/gt_paint/testset.json), K=7 / tau=50.
-# CPU-only (faiss-CPU kNN over the 397k DB); reuses already-extracted descriptors. Submit: sbatch eval_paint148.slurm
+# CPU-only (faiss-CPU kNN over the 397k DB); reuses already-extracted descriptors. Submit: sbatch slurm/eval_paint148.slurm
 #SBATCH --account=pl0896-03
 #SBATCH --partition=standard
 #SBATCH --cpus-per-task=16

@@ -122,7 +122,7 @@ Dotted lines = the all-real baseline; every scaling point sits far above it.*
 ## How we trained (identical to the paper's model — only the data changes)
 
 Every run uses the **same recipe** as our step-1 reproduction of the paper's best model (*R18-SWSL
-Con-Syn+Real-closest*, EXP-1, GAP 35.97). The command (`paint_train.slurm`) is literally `train.slurm`
+Con-Syn+Real-closest*, EXP-1, GAP 35.97). The command (`slurm/paint_train.slurm`) is literally `slurm/train.slurm`
 with the data swapped:
 
 - backbone **R18-SWSL**, started from **ImageNet-SWSL** weights (fresh each run — not continued from a
@@ -203,11 +203,11 @@ sanity check, **not** a reported result.*
 ```bash
 .venv/bin/python scripts/build_paintings_mix_data.py     # build the blended manifests (data/gt_paint_mix_*)
 for tag in 80r20s 60r40s 40r60s 20r80s 0r100s; do        # train each blend (100/0 already = data/gt_paint)
-  tid=$(sbatch --parsable --job-name=met-tr-$tag paint_train.slurm data/gt_paint_mix_$tag data/aug paint_$tag)
-  sbatch --dependency=afterok:$tid --job-name=met-ev-$tag paint_eval.slurm data/models/r18SWSL_paint_$tag 10 $tag
+  tid=$(sbatch --parsable --job-name=met-tr-$tag slurm/paint_train.slurm data/gt_paint_mix_$tag data/aug paint_$tag)
+  sbatch --dependency=afterok:$tid --job-name=met-ev-$tag slurm/paint_eval.slurm data/models/r18SWSL_paint_$tag 10 $tag
 done
 # full-benchmark eval per model (tag = synthetic %): paint->0s, paint_80r20s->20s, ... paint_0r100s->100s
-sbatch eval_full.slurm data/models/r18SWSL_paint 10 0s   # ...repeat for each model
-sbatch eval_paint_cls.slurm                              # painting slice on the full 397k DB (148-photo def)
+sbatch slurm/eval_full.slurm data/models/r18SWSL_paint 10 0s   # ...repeat for each model
+sbatch slurm/eval_paint_cls.slurm                              # painting slice on the full 397k DB (148-photo def)
 .venv-dino/bin/python scripts/plot_mixing_report.py      # -> fig_paintings.png, fig_full_benchmark.png
 ```

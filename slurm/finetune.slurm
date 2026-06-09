@@ -1,7 +1,7 @@
 #!/bin/bash
 # Fine-tune the step-1 model (epoch 10) with synthetic gallery data, LR 1e-7.
-# usage: sbatch --job-name=met-ft-combined finetune.slurm combined
-#        sbatch --job-name=met-ft-synth    finetune.slurm synth
+# usage: sbatch --job-name=met-ft-combined slurm/finetune.slurm combined
+#        sbatch --job-name=met-ft-synth    slurm/finetune.slurm synth
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1
@@ -10,7 +10,7 @@
 #SBATCH --time=1-12:00:00
 #SBATCH --output=logs/%x-%j.out
 
-VARIANT="${1:?usage: sbatch finetune.slurm <combined|synth>}"
+VARIANT="${1:?usage: sbatch slurm/finetune.slurm <combined|synth>}"
 case "$VARIANT" in
   combined) INFO=data/gt_aug;   OUT=data/models/r18SWSL_ft_combined ;;
   synth)    INFO=data/gt_synth; OUT=data/models/r18SWSL_ft_synth ;;

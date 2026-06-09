@@ -2,7 +2,7 @@
 """Figures for the 'training with synthetic data' write-up (core plan, steps 1-4).
 
 All numbers are the val-tuned test results recorded in EXPERIMENTS.md (EXP-1 / EXP-4):
-  - Step 1 baseline (no synthetic) ........ eval job 7313742-derived (extract_eval.slurm)
+  - Step 1 baseline (no synthetic) ........ eval job 7313742-derived (slurm/extract_eval.slurm)
   - Combined FT (studio + synthetic) ...... eval job 7332888
   - Synth-only FT (synthetic only) ........ eval job 7330036
   - From-scratch +synth (clean A/B) ....... eval job 7342026

@@ -1,9 +1,9 @@
 #!/bin/bash
 # Close step 4: evaluate the FROM-SCRATCH +synth run (r18SWSL_scratch_synth, epoch 10) with the
-# IDENTICAL protocol to step 1 (extract_eval.slurm) — extract MS descriptors over the ORIGINAL
+# IDENTICAL protocol to step 1 (slurm/extract_eval.slurm) — extract MS descriptors over the ORIGINAL
 # studio DB + real queries, then full-grid eval + paintings eval. This is the clean A/B vs step 1
 # (same 10-epoch recipe, only +synthetic), so it must use the same epoch (10) and same eval. Submit:
-#   sbatch extract_eval_scratch.slurm
+#   sbatch slurm/extract_eval_scratch.slurm
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1

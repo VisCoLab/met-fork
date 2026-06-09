@@ -2,7 +2,7 @@
 # Re-score the FULL-benchmark painting slice under the committed Classification=="Paintings"
 # definition (148 queries) for the 6 mix models + the step-1 reference. CPU-only (faiss-CPU
 # kNN over the 397k DB); reuses already-extracted descriptors (no GPU / no re-extraction).
-# usage: sbatch eval_paint_cls.slurm
+# usage: sbatch slurm/eval_paint_cls.slurm
 #SBATCH --account=pl0896-03
 #SBATCH --partition=standard
 #SBATCH --cpus-per-task=16

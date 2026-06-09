@@ -2,7 +2,7 @@
 # Eval an adapted DINOv3 model on the FULL Met benchmark + paintings, exactly like
 # every other model: extract over the ORIGINAL 397k studio DB + real queries
 # (.venv-dino, transformers), then full-grid eval + paintings eval (proven .venv).
-# usage: sbatch --job-name=met-dinoeval-head-synth eval_dino_ft.slurm head_synth
+# usage: sbatch --job-name=met-dinoeval-head-synth slurm/eval_dino_ft.slurm head_synth
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1
@@ -11,7 +11,7 @@
 #SBATCH --time=6:00:00
 #SBATCH --output=logs/%x-%j.out
 
-VARIANT="${1:?usage: eval_dino_ft.slurm <head_synth|lora_synth|head_studio|lora_studio>}"
+VARIANT="${1:?usage: slurm/eval_dino_ft.slurm <head_synth|lora_synth|head_studio|lora_studio>}"
 LORA=""; [[ "$VARIANT" == lora_* ]] && LORA="--lora"
 cd "$SLURM_SUBMIT_DIR"; mkdir -p logs
 export HF_HOME=/mnt/storage_6/project_data/pl0896-03/art-research/.cache/huggingface

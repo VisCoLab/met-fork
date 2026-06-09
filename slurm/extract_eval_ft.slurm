@@ -1,8 +1,8 @@
 #!/bin/bash
 # Evaluate a fine-tuned model (epoch 5) like steps 1-2: extract MS descriptors over the
 # ORIGINAL studio DB + real queries, then full-grid eval + paintings eval.
-# usage: sbatch --job-name=met-fteval-synth extract_eval_ft.slurm synth
-#        sbatch --job-name=met-fteval-combined extract_eval_ft.slurm combined
+# usage: sbatch --job-name=met-fteval-synth slurm/extract_eval_ft.slurm synth
+#        sbatch --job-name=met-fteval-combined slurm/extract_eval_ft.slurm combined
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1
@@ -11,7 +11,7 @@
 #SBATCH --time=4:00:00
 #SBATCH --output=logs/%x-%j.out
 
-VARIANT="${1:?usage: sbatch extract_eval_ft.slurm <combined|synth>}"
+VARIANT="${1:?usage: sbatch slurm/extract_eval_ft.slurm <combined|synth>}"
 cd "$SLURM_SUBMIT_DIR"; mkdir -p logs
 export TORCH_HOME="$SLURM_SUBMIT_DIR/data/torch_home"; export PYTHONUNBUFFERED=1
 CKPT=$(ls data/models/r18SWSL_ft_${VARIANT}/*_epoch:_5 2>/dev/null | head -1)

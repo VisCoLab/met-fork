@@ -6,7 +6,7 @@ K=7 / tau=50 (the EXP-2 painting protocol), then GAP(+all distractors) / GAP- / 
 148 painting queries. Loops over the 6 mix models + the step-1 full-data reference, all under
 the same query set -> directly comparable to the closed-world 148-query numbers.
 
-Compute (full-DB kNN) -> run via SLURM, not the login node:  sbatch eval_paint_cls.slurm
+Compute (full-DB kNN) -> run via SLURM, not the login node:  sbatch slurm/eval_paint_cls.slurm
 """
 import os, sys, json, pickle
 HERE = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.dirname(HERE); sys.path.insert(0, REPO)

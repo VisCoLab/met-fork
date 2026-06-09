@@ -1,7 +1,7 @@
 #!/bin/bash
 # Step 1 of the VISART plan: reproduce the paper's best single model
 #   R18-SWSL Con-Syn+Real-closest  (target GAP 36.1 / GAP- 52.4 / ACC 55.0).
-# Submit from the repo root:  sbatch train.slurm
+# Submit from the repo root:  sbatch slurm/train.slurm
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1

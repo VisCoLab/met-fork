@@ -2,9 +2,9 @@
 # Closed-world painting eval: extract MS descriptors over the PAINTING DB (data/gt_paint)
 # from a checkpoint, then 2-fold-CV eval (val=1 can't tune K/tau). The eval DB is ALWAYS
 # the closed painting world, so this also serves as the control for any model.
-# usage: sbatch paint_eval.slurm [model_dir=data/models/r18SWSL_paint] [epoch=10] [tag=paint]
+# usage: sbatch slurm/paint_eval.slurm [model_dir=data/models/r18SWSL_paint] [epoch=10] [tag=paint]
 #   control (full step-1 model on the closed world):
-#     sbatch paint_eval.slurm data/models/r18SWSL_con-syn+real-closest 10 step1_on_paint
+#     sbatch slurm/paint_eval.slurm data/models/r18SWSL_con-syn+real-closest 10 step1_on_paint
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1

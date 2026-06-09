@@ -4,9 +4,9 @@
 # (Classification=="Paintings", 4,898 classes / 12,403 imgs; data/gt_paint, built by
 # scripts/build_paintings_data.py). NOT comparable to the full-DB GAP 36.1; a
 # self-contained painting benchmark aligned with the synthetic experiment.
-# Submit:  sbatch paint_train.slurm                                  # real baseline (data/gt_paint)
-#   real/synth mix run (eval still on real via paint_eval.slurm):
-#     sbatch --job-name=met-tr-40r60s paint_train.slurm data/gt_paint_mix_40r60s data/aug paint_40r60s
+# Submit:  sbatch slurm/paint_train.slurm                                  # real baseline (data/gt_paint)
+#   real/synth mix run (eval still on real via slurm/paint_eval.slurm):
+#     sbatch --job-name=met-tr-40r60s slurm/paint_train.slurm data/gt_paint_mix_40r60s data/aug paint_40r60s
 #SBATCH --account=pl0896-03
 #SBATCH --partition=tesla
 #SBATCH --gres=gpu:h100:1
@@ -27,7 +27,7 @@ export PYTHONUNBUFFERED=1
 echo "host=$(hostname)  info=$INFO  im_root=$IMROOT  tag=$TAG  start=$(date)"
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
 
-# Identical to train.slurm; ONLY --info_dir changes (closed painting world).
+# Identical to slurm/train.slurm; ONLY --info_dir changes (closed painting world).
 .venv/bin/python -m code.examples.train_contrastive \
     ./data/models/r18SWSL_${TAG} \
     --net r18_sw-sup --pretrained \
