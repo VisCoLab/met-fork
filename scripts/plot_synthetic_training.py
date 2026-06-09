@@ -11,7 +11,7 @@ Full GAP / GAP-/ ACC are at each model's own best (K, tau); the paint columns ar
 Run (NOT on a login node):
   srun --account=pl0896-03 --partition=standard --time=0:10:00 --mem=4G \
       .venv-dino/bin/python scripts/plot_synthetic_training.py
-Writes -> experiments/training-with-synthetic/figures/{gap_by_config.png, baseline_vs_synth.png}
+Writes -> experiments/training-with-synthetic/figures/{gap_by_config,baseline_vs_synth}.png + experiments/dinov3-backbone/figures/progression.png
 """
 import os
 import matplotlib
@@ -19,8 +19,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-OUT = "experiments/training-with-synthetic/figures"
-os.makedirs(OUT, exist_ok=True)
+OUT = "experiments/training-with-synthetic/figures"          # figs 1-2 (R18 + synthetic)
+DINO_OUT = "experiments/dinov3-backbone/figures"             # fig 3 (R18 -> DINOv3 progression)
+os.makedirs(OUT, exist_ok=True); os.makedirs(DINO_OUT, exist_ok=True)
 
 # ----- palette -----
 GREY   = "#b3b3b3"   # baselines (paper, step 1)
@@ -133,9 +134,10 @@ legend = [Patch(fc=GREY, label="off-the-shelf / reproduced reference"),
           Patch(fc=CLEAN, label="our contribution (synthetic data · geometric re-rank)")]
 ax.legend(handles=legend, loc="upper left", frameon=False, fontsize=9.5,
           bbox_to_anchor=(0.0, 0.80))
-fig.savefig(f"{OUT}/progression.png")
+fig.savefig(f"{DINO_OUT}/progression.png")
 plt.close(fig)
 
 print("wrote:")
-for f in ("gap_by_config.png", "baseline_vs_synth.png", "progression.png"):
+for f in ("gap_by_config.png", "baseline_vs_synth.png"):
     print(" ", os.path.join(OUT, f))
+print(" ", os.path.join(DINO_OUT, "progression.png"))

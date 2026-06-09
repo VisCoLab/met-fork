@@ -60,8 +60,9 @@ The original paper's best single model scores **GAP 36.1 / GAP⁻ 52.4 / ACC 55.
 | Experiment | Question |
 |---|---|
 | [`renders-as-queries/`](renders-as-queries/README.md) | Can the Met model (trained on real data only) recognize our synthetic gallery renders, used as queries? |
-| [`training-with-synthetic/`](training-with-synthetic/README.md) | Does adding synthetic data to training beat the paper on its own — then, a stronger backbone (DINOv3 + geometric re-rank)? |
+| [`training-with-synthetic/`](training-with-synthetic/README.md) | Does adding synthetic data to training beat the paper, on its own (same recipe, no new method)? |
 | [`real-vs-synthetic-mix/`](real-vs-synthetic-mix/README.md) | Real vs synthetic training mix: how much does synthetic help for paintings, and does *more* synthetic keep helping? |
+| [`dinov3-backbone/`](dinov3-backbone/README.md) | DINOv3 retrieval method: a frozen DINOv3 backbone ~doubles GAP zero-shot, and our geometric re-rank fixes its distractor-rejection weakness (+4.9 GAP). |
 | [`dinov3-embedding-analysis/`](dinov3-embedding-analysis/README.md) | How does a frozen DINOv3 organize the renders (camera angle / scene settings / painting identity), and how far is synthetic from real? |
 
 Painting experiments use the committed definition `Classification == "Paintings"` (4,898 classes /

@@ -1,10 +1,9 @@
-# Beating the Met benchmark: synthetic data, then a stronger backbone
+# Beating the Met benchmark with synthetic data
 
-*Two threads from this project, in sequence. **First** (steps 1–4): retrain the original recognition
-model with our synthetic "phone-photos-in-a-gallery" renders added, and ask whether that **alone** —
-same recipe, no new method — beats the paper. **Then** (step 5): pivot to a foundation backbone (DINOv3)
-plus a geometric re-rank — the new method. (Met / VISART fork; lab notebook:
-[`EXPERIMENTS.md` → EXP-1, EXP-4, EXP-6](../../EXPERIMENTS.md).)*
+*Retrain the original Met recognition model with our synthetic "phone-photos-in-a-gallery" renders
+added, and ask whether that **alone** — same recipe, no new method — beats the paper. (Met / VISART
+fork; lab notebook: [`EXPERIMENTS.md` → EXP-1, EXP-4](../../EXPERIMENTS.md).) The separate DINOv3
+backbone + geometric re-rank thread now lives in [`../dinov3-backbone/`](../dinov3-backbone/README.md).*
 
 ## What we did, in one paragraph
 
@@ -36,15 +35,8 @@ the two runs are directly comparable and any difference is down to the added dat
   teach broadly useful lighting / viewpoint / glass invariance that helps real photos across the board.
 - Two quicker **fine-tuning** variants gave comparable or larger gains (synth-only 38.61, combined 37.38)
   but are **confounded** (they also trained longer); the from-scratch run removes that doubt.
-- **Bottom line so far: synthetic data helps on its own.** Contribution 1 stands — before any new method.
-
-**Then we changed the backbone (step 5):**
-- **A frozen DINOv3 foundation model nearly doubles GAP** out of the box: 35.97 → **48.16** (ViT-L),
-  **52.11** (the 7B model). *(Zero-shot DINOv3 on Met is the DINOv3 paper's own result, not our contribution.)*
-- **Our new method — a geometric re-rank — lifts DINOv3 ViT-L to GAP 53.07** (+4.9), by rejecting
-  distractors with accuracy left untouched; it already edges the 8× larger 7B model.
-- **The open question that links both threads:** does adapting DINOv3 *on our synthetic data* help even
-  more? That fine-tuning ablation is running now.
+- **Bottom line: synthetic data helps on its own.** Contribution 1 stands — before any new method.
+  (The separate DINOv3 backbone + re-rank thread is written up in [`../dinov3-backbone/`](../dinov3-backbone/README.md).)
 
 ---
 
@@ -134,71 +126,19 @@ because mixing 397k studio + 25k synthetic dilutes the synthetic signal each epo
 
 ---
 
-## 5. Continuation: a much stronger backbone (DINOv3)
-
-The +2.18 GAP from synthetic data is real — but it's a *small* lever next to the **backbone**. Swapping
-the ResNet-18 for a **frozen DINOv3** foundation model (used as-is, no training — we just feed its
-features into the *same* kNN classifier and metrics) nearly **doubles** GAP:
-
-![From R18 + synthetic to DINOv3 + re-rank](figures/progression.png)
-
-| backbone (frozen, zero-shot) | full GAP | GAP⁻ | ACC |
-|---|--:|--:|--:|
-| R18-SWSL — our step-1 baseline | 35.97 | 52.14 | 54.64 |
-| R18-SWSL + synthetic *(§3 of this doc)* | 38.15 | 55.49 | 58.23 |
-| **DINOv3 ViT-L** | **48.16** | 72.14 | 77.07 |
-| **DINOv3-7B** | **52.11** | 75.46 | 81.95 |
-
-*"Zero-shot" = the pretrained model is used directly, no fine-tuning. Everything is scored in our exact
-kNN + GAP pipeline, so these numbers are comparable to the synthetic-data rows above.*
-
-> **Honesty note.** That DINOv3 nearly doubles GAP on Met is **DINOv3's own published claim**, not our
-> contribution. We reproduced it in our pipeline to get a faithful starting point — the contribution is
-> what we add *on top* (§6).
-
----
-
-## 6. The new method: a geometric re-rank on DINOv3
-
-DINOv3 has one clear weakness. It's excellent at **ranking the right painting first** (GAP⁻ = 72) but
-poor at **rejecting distractors** — query photos of things that aren't in the collection (full GAP = 48).
-That 24-point gap between the two is exactly what GAP penalises.
-
-The fix is **geometric verification**. For a query's top-50 candidates, we check whether their image
-*patches* actually line up — mutual nearest-neighbour patch matches, filtered by RANSAC (the classic
-"are these two pictures the same thing in the same arrangement?" test). A true match has many consistent
-patch correspondences; a distractor has few. We fold that patch-match score into the model's
-**confidence** as a gate, which leaves the top-1 guess — and therefore accuracy — untouched:
-
-| DINOv3 ViT-L (our pipeline) | full GAP | GAP⁻ | ACC |
-|---|--:|--:|--:|
-| baseline (CLS-feature kNN) | 48.16 | 72.14 | 77.07 |
-| **+ geometric re-rank gate** | **53.07** | **74.69** | 77.07 |
-
-*The gate lifts both GAP (+4.9) and GAP⁻ (+2.55) with accuracy unchanged — a clean distractor-rejection
-win, no trade-off. ViT-L + gate (53.07) already edges the 8× larger DINOv3-7B zero-shot (52.11).*
-
-**Where this is headed:** put the same gate on top of the stronger **7B** features (zero-shot 52.11) for
-the headline number — expected ~57 if the +5 transfers. And the thread that loops back to the first half
-of this doc — **does adapting DINOv3 on our synthetic data help further?** — is the fine-tuning ablation
-(DINOv3 head-only vs LoRA, on studio vs synthetic) that is **running now**; results pending.
-
----
-
-## 7. What this means
+## 5. What this means
 
 - **Contribution 1 holds.** Synthetic gallery renders improve recognition *on their own*, under the
   paper's exact protocol, and the clean result (38.15) **beats the paper's best single model** (36.1).
 - **It's a domain-gap fix, not a data-count fix.** The lift reaches non-painting queries too, so the
   renders close the studio→real-photo gap broadly — not just padding the painting classes.
-- **The backbone is the larger lever.** A frozen DINOv3 nearly doubles GAP (48–52), and our geometric
-  re-rank pushes it to **53.07** by fixing DINOv3's distractor-rejection weakness, accuracy untouched.
-- **The two threads converge next:** the open test is whether adapting DINOv3 *on our synthetic data*
-  stacks the §3 gain on top of the §6 gain. If it does, the paper's two contributions compound.
+- **A stronger backbone is the bigger lever.** A frozen DINOv3 nearly doubles GAP, and our geometric
+  re-rank pushes it further — a separate thread, written up in
+  [`../dinov3-backbone/`](../dinov3-backbone/README.md).
 
 ---
 
-## 8. Caveats
+## 6. Caveats
 
 - **kNN tuning on a tiny painting val set.** `K` and temperature are tuned on the full validation set
   (as in the paper); the painting-only val set is too small to tune on, so paint scores use a fixed
@@ -208,17 +148,12 @@ of this doc — **does adapting DINOv3 on our synthetic data help further?** —
 - **Synthetic camera-rig bug.** One of the five rendered views (`right upper`) is grazing/edge-on and
   near-useless (see EXP-3); the gain above is *despite* carrying that broken view in training.
 - **The fine-tune runs are confounded** by design — they are corroboration only; see §4.
-- **The DINOv3 numbers are ViT-L, not yet the 7B headline**, reuse features from the sibling
-  *art-research* repo, and are tuned on only ~129 Met validation queries (noisy). The patch-match
-  geometry also assumes flat artworks, so it's shakier for 3-D (non-painting) exhibits.
-- **One re-rank variant is a mirage.** An alternative "RRF" fusion shows GAP 56, but it's val-overfit
-  (it *drops* GAP⁻ by ~6); the +4.9 *gate* result is the one we trust and report.
 
 ---
 
-## 9. How to reproduce
+## 7. How to reproduce
 
-**Synthetic data on R18 (§1–4)** — run in `.venv`:
+Run in `.venv`:
 
 ```bash
 # 1) build the augmented training set (studio + synthetic symlinks + manifests)
@@ -238,24 +173,8 @@ srun --account=pl0896-03 --partition=standard --time=0:10:00 --mem=4G \
 The two fine-tune controls are `slurm/finetune.slurm <synth|combined>` (train) + `slurm/extract_eval_ft.slurm
 <variant>` (eval), jobs 7330026 / 7330036 (synth) and 7330025 / 7332888 (combined).
 
-**DINOv3 backbone + re-rank (§5–6)** — run in `.venv-dino`; DINOv3 features are reused from the sibling
-*art-research* repo:
-
-```bash
-# zero-shot DINOv3 in our pipeline (CLS features -> PCA-whiten -> kNN -> GAP)
-sbatch slurm/eval_dinov3.slurm                             # job 7332349  -> ViT-L 48.16, 7B 52.11
-# geometric re-rank: patch matches over the CLS top-50, fused into the confidence as a gate
-sbatch slurm/rerank_fusion.slurm                           # -> ViT-L + gate 53.07
-# DINOv3 fine-tuning ablation (head-only / LoRA, on studio / synthetic)  -- running now
-sbatch --job-name=met-dinoL-head-synth slurm/ftdino.slurm synth head      # (+ lora; + studio variants)
-```
-
 Code: [`scripts/build_finetune_data.py`](../../scripts/build_finetune_data.py) ·
 [`slurm/train_synth.slurm`](../../slurm/train_synth.slurm) · [`slurm/extract_eval_scratch.slurm`](../../slurm/extract_eval_scratch.slurm) ·
 [`scripts/eval_fullgrid.py`](../../scripts/eval_fullgrid.py) · [`scripts/eval_paintings.py`](../../scripts/eval_paintings.py) ·
-[`scripts/plot_synthetic_training.py`](../../scripts/plot_synthetic_training.py) · DINOv3:
-[`scripts/build_dinov3_pkl.py`](../../scripts/build_dinov3_pkl.py) ·
-[`scripts/patchmatch_rerank.py`](../../scripts/patchmatch_rerank.py) ·
-[`scripts/rerank_confidence_fusion.py`](../../scripts/rerank_confidence_fusion.py) ·
-[`slurm/ftdino.slurm`](../../slurm/ftdino.slurm).
-Every number above is recorded in [`EXPERIMENTS.md`](../../EXPERIMENTS.md) (EXP-1, EXP-4, EXP-6).
+[`scripts/plot_synthetic_training.py`](../../scripts/plot_synthetic_training.py).
+Every number above is recorded in [`EXPERIMENTS.md`](../../EXPERIMENTS.md) (EXP-1, EXP-4).

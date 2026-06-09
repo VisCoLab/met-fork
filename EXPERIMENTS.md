@@ -159,6 +159,8 @@ eval'd in OUR pipeline (canonical kNN-softmax GAP). DINOv3 features **reused** f
 paper's own claim** (Met GAP = DINOv2 40.0 **+10.8** ≈ 50.8) — NOT our contribution; our delta is the
 geometric re-rank on top.
 
+**Standalone write-up: [`experiments/dinov3-backbone/`](experiments/dinov3-backbone/README.md)** (split out of `training-with-synthetic` so the R18 + synthetic-data story stays separate; EXP-6 keeps its number).
+
 **Step 2 — DINOv3 reproduced in our pipeline** (`scripts/build_dinov3_pkl.py` + `eval_fullgrid.py`,
 `slurm/eval_dinov3.slurm` job 7332349): assemble raw DINOv3 CLS feats (aspect512, 4096-d) → our PCAw
 4096→512 + faiss kNN + GAP. Reproduces the paper → bridge faithful; earlier k=1 "0.68" was the
