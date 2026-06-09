@@ -109,11 +109,54 @@ and match step-1.
 > **397,121** images (≈ 22–32 min per run vs ≈ 21 h for step-1). Same recipe and epoch count; far fewer
 > updates — worth remembering when comparing to the full-data reference.
 
+## How we set the retrieval knobs (K and τ) with only one validation photo
+
+The recognizer's last step is a **k-nearest-neighbor vote** with two knobs: **K** (how many nearest
+training photos vote on a query) and **τ** (a temperature controlling how strongly closer matches
+outweigh farther ones). These are normally chosen on a **validation set** — and that's the problem:
+the closed painting world has only **1 validation photo**, nowhere near enough to choose K and τ.
+
+**Closed world — tune on the test photos, but with 2-fold cross-validation** so nothing is ever scored
+with knobs it helped choose (`scripts/eval_paintings_closed.py`):
+
+1. Split the 148 painting test photos into two halves (fixed seed).
+2. Grid-search K ∈ {1, 2, 3, 5, 7, 10, 15, 20, 50} × τ ∈ {0.01 … 500} on **half A**, keep the best
+   (K, τ), and score **half B** with it.
+3. Do the reverse — tune on **B**, score **A**.
+4. Report the **average over the two held-out halves**. Every photo is scored by knobs tuned only on
+   the *other* half, so there is no leakage.
+
+**Full benchmark — a real validation set exists** (2,165 queries), so the overall GAP / GAP⁻ / ACC are
+tuned the normal way, per model (`eval_fullgrid.py`). The painting slice (the same 148 photos) instead
+uses a **fixed K = 7, τ = 50** — the values tuned for the original full-data model — applied identically
+to every model, which keeps the cross-model comparison fair without needing painting-specific validation.
+
+**Why this is trustworthy — the audit.** If "tuning on the test set" were quietly inflating the scores,
+then the **leaky** version — choosing one (K, τ) on all 148 photos *and* reporting on those same 148 (an
+optimistic upper bound we call the *oracle*) — would score noticeably higher than the honest 2-fold
+number. It doesn't: they agree to within ~0.2 points everywhere. And **τ = 50 is picked in almost every
+fold** (K ranges 2–50 but barely moves the score). So the knob choice is not what produces the
+"synthetic helps" result.
+
+| training mix (real : synth) | reported — honest 2-fold GAP⁻ | oracle — leaky upper bound GAP⁻ | difference |
+|---|--:|--:|--:|
+| 100 : 0 | 67.18 | 67.26 | +0.08 |
+| 80 : 20 | 70.56 | 70.64 | +0.08 |
+| 60 : 40 | 70.65 | 70.54 | −0.11 |
+| 40 : 60 | 71.37 | 71.36 | −0.01 |
+| 20 : 80 | 71.24 | 71.05 | −0.19 |
+| 0 : 100 | 72.47 | 72.55 | +0.08 |
+| all-real-data reference | 71.62 | 71.51 | −0.11 |
+
+*The honest (cross-validated) score and the leaky (tune = report) score differ by ≤ 0.2 in either
+direction — the tuning adds essentially no inflation. Closed-world numbers; the "oracle" column is a
+sanity check, **not** a reported result.*
+
 ## Caveats
 
-- **Small test set:** 148 painting photos, and only 1 painting in the validation set — so we tune the
-  k/τ knobs by **2-fold cross-validation on the test photos** (each photo scored on a half it did not
-  help tune, so no leakage). Differences ≤ ~2 points are within noise.
+- **Small test set:** just 148 painting photos (and only 1 validation photo — hence the K/τ handling in
+  *How we set the retrieval knobs* above). Single differences ≤ ~2 points are within noise — trust the
+  big all-real → all-synthetic jump and the monotone trend, not the exact ordering of the middle blends.
 - **Closed-world scores are not comparable to the paper's GAP 36.1** — searching 12 k photos is far
   easier than 397 k. Comparisons *across blends* are fair (identical test each time); the full-benchmark
   columns are the ones comparable to the paper / EXP-2.
