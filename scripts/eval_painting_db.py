@@ -46,7 +46,7 @@ rq_mask = np.array([e["path"] in paint_paths for e in test_meta])
 realq, realq_lab = test[rq_mask], test_labels[rq_mask]
 
 # synthetic renders whose source class is in the painting DB (every Classification=="Paintings" class
-# has renders; the 54 broad/strict-only synthetic classes are dropped as unanswerable)
+# has renders; the 54 synthetic classes outside this set (4,952 rendered - 4,898) are dropped as unanswerable)
 s = pickle.load(open(SYN, "rb"))
 synd = np.ascontiguousarray(s["descriptors"], dtype="float32")
 mids = np.asarray(s["met_ids"]).astype(np.int64); angles = np.asarray(s["angles"])

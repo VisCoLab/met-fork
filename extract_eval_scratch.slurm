@@ -27,6 +27,6 @@ echo "=== extract multi-scale descriptors (DB = original 397k studio + real quer
     --info_dir data/ground_truth --im_root data/ --gpuid 0
 echo "=== full benchmark eval (full K x tau grid) ==="
 .venv/bin/python scripts/eval_fullgrid.py "$D" data/ground_truth 512
-echo "=== paintings eval (strict/broad) ==="
+echo "=== paintings eval (Classification==Paintings, 148) ==="
 .venv/bin/python scripts/eval_paintings.py "$D"
 echo "end=$(date)"

@@ -37,7 +37,7 @@ def recalls(mask):
 # query groups: all synthetic, then the committed painting subset.
 # Committed painting def = Met Open Access Classification=="Paintings" (the 148 painting test
 # queries in data/gt_paint/testset.json, spanning 122 distinct classes). Painting subset = renders
-# whose source class is one of those test-query classes. (The old strict/broad subsets were dropped.)
+# whose source class is one of those test-query classes.
 groups = [("ALL synthetic", np.ones(len(mids), bool))]
 gt_paint = os.path.join(REPO, "data/gt_paint/testset.json")
 if os.path.exists(gt_paint):

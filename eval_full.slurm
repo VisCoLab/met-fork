@@ -27,6 +27,6 @@ echo "=== extract MS descriptors (FULL 397k studio DB + 19,319 queries) ==="
     --info_dir data/ground_truth --im_root data/ --gpuid 0
 echo "=== full benchmark eval (full K x tau grid, tuned on val) ==="
 .venv/bin/python scripts/eval_fullgrid.py "$D" data/ground_truth 512
-echo "=== paintings-slice eval (strict/broad, full 397k DB) ==="
+echo "=== paintings-slice eval (Classification==Paintings, 148; full 397k DB) ==="
 .venv/bin/python scripts/eval_paintings.py "$D"
 echo "end=$(date)"

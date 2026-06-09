@@ -1,12 +1,11 @@
 """Build the CLOSED-WORLD painting-only training/eval manifests.
 
-Painting definition (committed): Met Open Access `Classification == "Paintings"`
--> 4,898 dataset classes. This is the clean single-field core: it excludes broad's
-snuffbox/miniature/painted-object noise AND the substring-strict variants
-(Fans|Paintings, Ceramics-Paintings, ...), while keeping all genuine flat paintings
-incl. Asian-format scrolls/fans. It equals the synthetic dataset's exact universe
-(every one of these classes has gallery renders). Strictly nested:
-Western-easel (2,093) subset of THIS (4,898) subset of broad (7,310).
+Painting definition (committed, project-wide): Met Open Access
+`Classification == "Paintings"` (exact, single field) -> 4,898 dataset classes.
+The exact field is deliberate: it excludes painted *objects* (snuffboxes, cased
+miniatures, painted furniture, drawings) while keeping all genuine flat paintings,
+incl. Asian-format scrolls / fans / album leaves. It equals the synthetic dataset's
+universe (every one of these classes has gallery renders).
 
 Closed world => train DB, val, and test are ALL restricted to these classes and
 distractors are DROPPED (so GAP == GAP-, no label -1). This is a smaller, easier,

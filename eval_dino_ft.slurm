@@ -32,6 +32,6 @@ echo "=== full benchmark eval (PCAw 1024->512 + kNN K x tau grid), proven .venv 
 
 K=$(grep "BEST by val GAP" "$OUT/fullgrid.log" | grep -oP "'K': \K[0-9]+"); K=${K:-5}
 TAU=$(grep "BEST by val GAP" "$OUT/fullgrid.log" | grep -oP "'t': \K[0-9.]+"); TAU=${TAU:-20}
-echo "=== paintings eval (strict/broad) at tuned K=$K tau=$TAU ==="
+echo "=== paintings eval (Classification==Paintings, 148) at tuned K=$K tau=$TAU ==="
 .venv/bin/python scripts/eval_paintings.py "$OUT" data/ground_truth data/MetObjects.csv "$K" "$TAU" 512
 echo "end=$(date)"
