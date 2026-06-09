@@ -93,6 +93,8 @@ Restricting to the step-2 painting test classes (strict 138 / broad 176) gives t
 
 ⚠️ **Camera-framing artifact, not a clean domain result.** Verified by viewing renders: `right upper` is edge-on/grazing (painting a barely-visible sliver → 1.41%); `left upper`/`front` are well-framed (65–76% R@1). So the per-angle spread tracks framing, and "all angles" 36.93 is dragged down by the broken views. **Cross-check:** strict-painting synthetic **front R@1 68.84 ≈ step-2 real-photo ACC 69.36** — a well-framed render is about as recognizable as a real photo. **Action:** fix the `right upper` (and `*bottom`) camera poses + regenerate, then re-run for a clean per-angle measurement.
 
+**Standalone write-up: [`docs/synthetic-retrieval/`](docs/synthetic-retrieval/README.md)** — re-ran as job 7342800 (`synth_eval.slurm`, ~7 min H100); numbers reproduced exactly. Every number traces to `data/descriptors/synthetic/retrieval_summary.json` (new JSON dump added to `eval_synthetic_retrieval.py`).
+
 ### EXP-4 — step 4, train/fine-tune WITH synthetic data ✅
 Question: does adding the synthetic gallery data to training improve recognition of **real painting photos** (step-2 set) without hurting the rest? Eval DB stays the original studio set → directly comparable.
 

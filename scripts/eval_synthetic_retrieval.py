@@ -42,10 +42,22 @@ for nm, f in (("step-2 STRICT (138 painting test-classes)", "data/synth_gen/step
         ids = {int(p.split("/MET/")[1].split("/")[0]) for p in json.load(open(f))}
         groups.append((nm, np.isin(mids, list(ids))))
 
+def row(mask):
+    n, r1, r5, r10 = recalls(mask)
+    return {"N": int(n), "R@1": round(float(r1), 2), "R@5": round(float(r5), 2), "R@10": round(float(r10), 2)}
+
 print(f"DB: {len(train_labels):,} train images")
+summary = {"db_train_images": int(len(train_labels)), "n_synthetic": int(len(mids)), "groups": {}}
 for gname, gmask in groups:
     print(f"\n=== {gname} ===")
     print(f"{'angle':<14}{'N':>8}{'R@1':>8}{'R@5':>8}{'R@10':>8}")
-    n, r1, r5, r10 = recalls(gmask); print(f"{'ALL angles':<14}{n:>8}{r1:>8.2f}{r5:>8.2f}{r10:>8.2f}")
+    g = {"all_angles": row(gmask), "per_angle": {}}
+    r = g["all_angles"]; print(f"{'ALL angles':<14}{r['N']:>8}{r['R@1']:>8.2f}{r['R@5']:>8.2f}{r['R@10']:>8.2f}")
     for a in sorted(set(angles.tolist())):
-        n, r1, r5, r10 = recalls(gmask & (angles == a)); print(f"{a:<14}{n:>8}{r1:>8.2f}{r5:>8.2f}{r10:>8.2f}")
+        r = row(gmask & (angles == a)); g["per_angle"][a] = r
+        print(f"{a:<14}{r['N']:>8}{r['R@1']:>8.2f}{r['R@5']:>8.2f}{r['R@10']:>8.2f}")
+    summary["groups"][gname] = g
+
+out = os.path.join(REPO, "data/descriptors/synthetic/retrieval_summary.json")
+json.dump(summary, open(out, "w"), indent=2)
+print(f"\nsaved {out}")
