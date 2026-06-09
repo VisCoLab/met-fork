@@ -248,23 +248,39 @@ test set, two ways — a **closed painting world** (search only the 12,403 paint
 (closed, K/τ via 2-fold CV on the 148 since val=1) + `slurm/eval_full.slurm`/`slurm/eval_paint_cls.slurm`
 (full; painting slice at fixed K=7/τ=50).
 
-| mix (real:synth) | Paint GAP⁻ (closed) | Paint ACC (closed) | GAP (full) | GAP⁻ (full) | ACC (full) | Paint GAP⁻ (full) |
-|---|--:|--:|--:|--:|--:|--:|
-| 100:0 (all real) | 67.18 | 70.27 | 28.83 | 49.08 | 52.14 | 61.83 |
-| 80:20 | 70.56 | 72.97 | 30.23 | 50.03 | 52.84 | 66.09 |
-| 60:40 | 70.65 | 72.30 | 31.15 | 50.60 | 53.34 | 67.22 |
-| 40:60 | 71.37 | 72.97 | 30.38 | 50.74 | 53.54 | 67.92 |
-| 20:80 | 71.24 | 72.30 | 30.85 | 50.92 | 53.64 | 69.62 |
-| **0:100 (all synth)** | **72.47** | **73.65** | **31.32** | **51.47** | **54.04** | **70.04** |
-| *ref: all-real-data model (full 397k)* | *71.62* | *72.30* | *35.97* | *52.14* | *54.64* | *67.86* |
+**Painting recognition** — the 148 real painting photos, vs both DBs:
 
-**Synth-only data scaling** (0% real, lifting the 12,403 cap): closed-world GAP⁻ 72.47→73.73→74.39→**75.09**
-at 1×/1.25×/1.5×/all-24,490 renders (no plateau ⇒ data-limited); the full-benchmark painting slice
+| mix (real:synth) | GAP⁻ (paint DB) | ACC (paint DB) | GAP⁻ (full DB) |
+|---|--:|--:|--:|
+| 100:0 (all real) | 67.18 | 70.27 | 61.83 |
+| 80:20 | 70.56 | 72.97 | 66.09 |
+| 60:40 | 70.65 | 72.30 | 67.22 |
+| 40:60 | 71.37 | 72.97 | 67.92 |
+| 20:80 | 71.24 | 72.30 | 69.62 |
+| **0:100 (all synth)** | **72.47** | **73.65** | **70.04** |
+| *ref: all-real model (397k)* | *71.62* | *72.30* | *67.86* |
+
+**Full Met benchmark** — all 1,003 Met queries vs the full 397k DB:
+
+| mix (real:synth) | GAP | GAP⁻ | ACC |
+|---|--:|--:|--:|
+| 100:0 (all real) | 28.83 | 49.08 | 52.14 |
+| 80:20 | 30.23 | 50.03 | 52.84 |
+| 60:40 | 31.15 | 50.60 | 53.34 |
+| 40:60 | 30.38 | 50.74 | 53.54 |
+| 20:80 | 30.85 | 50.92 | 53.64 |
+| **0:100 (all synth)** | **31.32** | **51.47** | **54.04** |
+| *ref: all-real model (397k)* | *35.97* | *52.14* | *54.64* |
+
+(paint DB = the 12,403 painting photos, no distractors so GAP = GAP⁻; full DB = all 397,121, GAP incl. the 18,316 distractors.)
+
+**Synth-only data scaling** (0% real, lifting the 12,403 cap): paint-DB GAP⁻ 72.47→73.73→74.39→**75.09**
+at 1×/1.25×/1.5×/all-24,490 renders (no plateau ⇒ data-limited); the full-DB painting GAP⁻
 plateaus (70.04→70.81→70.93→70.90).
 
 **Finding:** synthetic gallery renders are **better training material than real studio photos** for this
 test — **synth-only (0% real) is the best of the six**, beating the all-real baseline everywhere and the
-**full-data 397k model on paintings** (closed 72.47 vs 71.62; full-paint GAP⁻ 70.04 vs 67.86) with ~32×
+**full-data 397k model on paintings** (paint-DB 72.47 vs 71.62; full-DB 70.04 vs 67.86) with ~32×
 less data and no real painting photo. The win is painting-specific: painting-only training can't reject
 the 18k distractors, so full **GAP** stays below the full-data model (31.32 vs 35.97). **Caveats:**
 closed-world numbers are **not** comparable to the paper's GAP 36.1 (12k vs 397k DB); 148 test / val=1

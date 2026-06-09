@@ -16,12 +16,14 @@ painting out of ~12 k painting photos) and the **full Met benchmark** (find the 
 trade real training photos for synthetic ones, does recognizing real paintings get better or worse?
 
 > **How to read the numbers** — all scores are 0–100, higher is better; metric definitions (**GAP**,
-> **GAP⁻**, **ACC**) are in the [experiments README](../README.md). Specific to this experiment:
-> - **two test settings**: *closed world* = search only the 12,403 real painting photos (easy);
->   *full benchmark* = search all 397,121 photos (hard — the original Met task). Only the full benchmark
->   has distractors, so there GAP < GAP⁻; the closed world has none, so GAP = GAP⁻.
-> - **"paint" columns** = scored on just the **148 real painting photos**; the plain GAP/GAP⁻/ACC =
->   scored over all **1,003** real Met queries.
+> **GAP⁻**, **ACC**) are in the [experiments README](../README.md). Results split into two tables by
+> **query set**, and within them two **databases**:
+> - **query set** — the **painting-recognition** table scores just the **148 real painting photos**; the
+>   **full-benchmark** table scores all **1,003** real Met queries.
+> - **database** — **paint DB** = search only the 12,403 painting photos (easy; no distractors, so
+>   GAP = GAP⁻); **full DB** = search all 397,121 photos (the original Met task — its GAP includes the
+>   18,316 distractors, GAP⁻ excludes them). The prose and figures call these the *closed painting
+>   world* and the *full Met benchmark*.
 
 ## TL;DR
 
@@ -29,7 +31,7 @@ trade real training photos for synthetic ones, does recognizing real paintings g
   real-painting recognition climbs **steadily**, in *both* test settings.
 - **Training on synthetic *alone* (zero real photos) is the best of the six.** It beats the all-real
   baseline everywhere, and on paintings it **beats the original model trained on all 397 k real photos**
-  in *both* test settings (closed 72.5 vs 71.6; full benchmark 70.0 vs 67.9) — using ~32× less data and
+  on **both** databases (paint-DB 72.5 vs 71.6; full-DB 70.0 vs 67.9) — using ~32× less data and
   not one real painting photo.
 - **Why it works:** the test photos are real *gallery* shots; the "real" training photos are clean
   *studio* shots. The synthetic renders imitate gallery conditions (angle, glass, lighting), so they
@@ -40,24 +42,37 @@ trade real training photos for synthetic ones, does recognizing real paintings g
 - **Honest limit:** only **148** painting test photos, so gaps of ≤ ~2 points are noise. Trust the big
   all-real → all-synthetic jump and the steady trend, not the exact ordering of the middle blends.
 
-## Results — all six models, one table
+## Results — all six models
 
-| Training mix (real : synth) | Paint GAP⁻ (closed) | Paint ACC (closed) | GAP (full) | GAP⁻ (full) | ACC (full) | Paint GAP⁻ (full) |
-|---|--:|--:|--:|--:|--:|--:|
-| 100 : 0 — all real | 67.18 | 70.27 | 28.83 | 49.08 | 52.14 | 61.83 |
-| 80 : 20 | 70.56 | 72.97 | 30.23 | 50.03 | 52.84 | 66.09 |
-| 60 : 40 | 70.65 | 72.30 | 31.15 | 50.60 | 53.34 | 67.22 |
-| 40 : 60 | 71.37 | 72.97 | 30.38 | 50.74 | 53.54 | 67.92 |
-| 20 : 80 | 71.24 | 72.30 | 30.85 | 50.92 | 53.64 | 69.62 |
-| **0 : 100 — all synthetic** | **72.47** | **73.65** | **31.32** | **51.47** | **54.04** | **70.04** |
-| *reference: all-real-data model* | *71.62* | *72.30* | *35.97* | *52.14* | *54.64* | *67.86* |
+**Painting recognition — the 148 real painting photos** (the contribution's target), against both databases:
 
-*Column guide — **Paint GAP⁻ / ACC (closed):** painting score searching only the 12,403 painting
-photos (easy). **GAP / GAP⁻ / ACC (full):** whole-benchmark score searching all 397,121 photos — GAP
-includes the 18 k distractors, GAP⁻ removes them, ACC is top-1 on the 1,003 real Met queries.
-**Paint GAP⁻ (full):** the same 148 painting photos, searched against the full 397 k DB. The
-**reference** row is the original model trained on all 397 k real photos (paintings + everything),
-scored identically. Best run (all-synthetic) in bold.*
+| training mix (real:synth) | GAP⁻ (paint DB) | ACC (paint DB) | GAP⁻ (full DB) |
+|---|--:|--:|--:|
+| 100:0 — all real | 67.18 | 70.27 | 61.83 |
+| 80:20 | 70.56 | 72.97 | 66.09 |
+| 60:40 | 70.65 | 72.30 | 67.22 |
+| 40:60 | 71.37 | 72.97 | 67.92 |
+| 20:80 | 71.24 | 72.30 | 69.62 |
+| **0:100 — all synthetic** | **72.47** | **73.65** | **70.04** |
+| *reference: all-real-data model (397k)* | *71.62* | *72.30* | *67.86* |
+
+*paint DB = search only the 12,403 painting photos (no distractors → GAP = GAP⁻); full DB = search all
+397,121 photos. Reference = the original model trained on all 397k real photos. Best run in bold.*
+
+**Full Met benchmark — all 1,003 real Met queries vs the full 397k DB** (how these painting-only-trained
+models do on the whole task):
+
+| training mix (real:synth) | GAP | GAP⁻ | ACC |
+|---|--:|--:|--:|
+| 100:0 — all real | 28.83 | 49.08 | 52.14 |
+| 80:20 | 30.23 | 50.03 | 52.84 |
+| 60:40 | 31.15 | 50.60 | 53.34 |
+| 40:60 | 30.38 | 50.74 | 53.54 |
+| 20:80 | 30.85 | 50.92 | 53.64 |
+| **0:100 — all synthetic** | **31.32** | **51.47** | **54.04** |
+| *reference: all-real-data model (397k)* | *35.97* | *52.14* | *54.64* |
+
+*GAP includes the 18,316 distractors, GAP⁻ removes them, ACC is top-1. Same models as above.*
 
 ![Painting recognition vs training mix](figures/fig_paintings.png)
 
@@ -89,13 +104,25 @@ The sweep above capped every run at 12,403 training images, so "100% synthetic" 
 **add more renders** — 1× (12,403, the existing point), 1.25×, 1.5×, and all 24,490 (~2×). Each set is a
 superset of the previous (same shuffle, longer prefix); recipe and evaluation are unchanged.
 
-| synthetic training images | paint GAP⁻ (closed) | paint ACC (closed) | GAP (full) | GAP⁻ (full) | ACC (full) | paint GAP⁻ (full) |
-|---|--:|--:|--:|--:|--:|--:|
-| *all-real baseline (12,403 real, 0 synthetic)* | *67.18* | *70.27* | *28.83* | *49.08* | *52.14* | *61.83* |
-| 12,403 (1.00×, = 100%-synth) | 72.47 | 73.65 | 31.32 | 51.47 | 54.04 | 70.04 |
-| 15,504 (1.25×) | 73.73 | 75.00 | 31.86 | 51.79 | 54.34 | 70.81 |
-| 18,604 (1.50×) | 74.39 | 75.68 | 32.18 | 51.81 | 54.24 | 70.93 |
-| **24,490 (1.97×, all renders)** | **75.09** | **76.35** | **32.68** | **51.94** | **54.34** | **70.90** |
+**Painting recognition — 148 real painting photos:**
+
+| synthetic training images | GAP⁻ (paint DB) | ACC (paint DB) | GAP⁻ (full DB) |
+|---|--:|--:|--:|
+| *all-real baseline (12,403 real, 0 synthetic)* | *67.18* | *70.27* | *61.83* |
+| 12,403 (1.00×, = 100%-synth) | 72.47 | 73.65 | 70.04 |
+| 15,504 (1.25×) | 73.73 | 75.00 | 70.81 |
+| 18,604 (1.50×) | 74.39 | 75.68 | 70.93 |
+| **24,490 (1.97×, all renders)** | **75.09** | **76.35** | **70.90** |
+
+**Full Met benchmark — 1,003 queries vs full 397k DB:**
+
+| synthetic training images | GAP | GAP⁻ | ACC |
+|---|--:|--:|--:|
+| *all-real baseline (12,403 real, 0 synthetic)* | *28.83* | *49.08* | *52.14* |
+| 12,403 (1.00×, = 100%-synth) | 31.32 | 51.47 | 54.04 |
+| 15,504 (1.25×) | 31.86 | 51.79 | 54.34 |
+| 18,604 (1.50×) | 32.18 | 51.81 | 54.24 |
+| **24,490 (1.97×, all renders)** | **32.68** | **51.94** | **54.34** |
 
 ![Does more synthetic data keep helping?](figures/fig_synth_scaling.png)
 
