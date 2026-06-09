@@ -11,7 +11,7 @@ Questions:
 
 Inputs (in --dir): synth_dino_dinov3_vitl16_aspect512.npz, synth_dino_records.json,
                    real_dino_vitl16_aspect512.npz
-Outputs (in --dir/analysis): summary.json + PNG figures.
+Outputs (in --dir/analysis): summary.json + PNG figures (PCA / t-SNE / UMAP).
 All features L2-normalized (cosine geometry) -- model-intrinsic, no train-fit PCAw.
 """
 import argparse
@@ -199,12 +199,16 @@ def main():
 
 
 def _proj(Xsample, seed=SEED):
-    """PCA-50 -> t-SNE-2D (standard); returns (pca2d, tsne2d)."""
+    """PCA-50 -> t-SNE-2D (standard), PCA-2D, and UMAP-2D (cosine, on the L2-normed
+    vectors). Returns (pca2d, tsne2d, umap2d)."""
+    import umap
     p50 = PCA(n_components=min(50, Xsample.shape[1]), random_state=seed).fit_transform(Xsample)
     tsne = TSNE(n_components=2, init="pca", perplexity=30, random_state=seed,
                 max_iter=1000).fit_transform(p50)
     pca2 = PCA(n_components=2, random_state=seed).fit_transform(Xsample)
-    return pca2, tsne
+    umap2 = umap.UMAP(n_components=2, n_neighbors=15, min_dist=0.1, metric="cosine",
+                      random_state=seed).fit_transform(Xsample)
+    return pca2, tsne, umap2
 
 
 def make_figures(outdir, synth, angle_idx, floor_idx, studio, pq, angles, floors, per_view, comp):
@@ -234,11 +238,11 @@ def make_figures(outdir, synth, angle_idx, floor_idx, studio, pq, angles, floors
     Xst = studio[st_idx]
     Xcomb = np.concatenate([Xst, Xsyn, pq], 0)
     dom = np.concatenate([np.zeros(len(Xst)), np.ones(len(Xsyn)), np.full(len(pq), 2)]).astype(int)
-    print(f"projecting {len(Xcomb)} points (PCA->t-SNE)...", flush=True)
-    pca2, tsne = _proj(Xcomb)
+    print(f"projecting {len(Xcomb)} points (PCA, t-SNE, UMAP)...", flush=True)
+    pca2, tsne, umap2 = _proj(Xcomb)
 
-    # (1) domain, both projections
-    for proj, tag in [(tsne, "tsne"), (pca2, "pca")]:
+    # (1) domain, all three projections
+    for proj, tag in [(tsne, "tsne"), (pca2, "pca"), (umap2, "umap")]:
         fig, ax = plt.subplots(figsize=(7, 6))
         for d, lab, c, mk, al in [(0, "studio (catalog)", "#1f77b4", "o", .5),
                                   (1, "synthetic (renders)", "#ff7f0e", ".", .35),
@@ -251,19 +255,21 @@ def make_figures(outdir, synth, angle_idx, floor_idx, studio, pq, angles, floors
         fig.tight_layout(); fig.savefig(os.path.join(outdir, f"proj_domain_{tag}.png"), dpi=140)
         plt.close(fig)
 
-    # (2) synthetic colored by angle, and by floor (t-SNE)
+    # (2) synthetic colored by angle, and by floor (t-SNE + UMAP)
     syn_mask = dom == 1
-    syn_proj = tsne[syn_mask]
-    for labels, names, fname, title in [
-        (a_s, angles, "proj_synth_angle_tsne.png", "Synthetic embeddings by camera angle"),
-        (f_s, floors, "proj_synth_floor_tsne.png", "Synthetic embeddings by floor material")]:
-        fig, ax = plt.subplots(figsize=(7, 6))
-        cmap = plt.get_cmap("tab10")
-        for i, nm in enumerate(names):
-            mm = labels == i
-            ax.scatter(syn_proj[mm, 0], syn_proj[mm, 1], s=8, color=cmap(i), alpha=.5, label=nm, linewidths=0)
-        ax.set_title(title); ax.legend(markerscale=2, fontsize=9); ax.set_xticks([]); ax.set_yticks([])
-        fig.tight_layout(); fig.savefig(os.path.join(outdir, fname), dpi=140); plt.close(fig)
+    for proj, ptag in [(tsne, "tsne"), (umap2, "umap")]:
+        syn_proj = proj[syn_mask]
+        for labels, names, fname, title in [
+            (a_s, angles, f"proj_synth_angle_{ptag}.png", "Synthetic embeddings by camera angle"),
+            (f_s, floors, f"proj_synth_floor_{ptag}.png", "Synthetic embeddings by floor material")]:
+            fig, ax = plt.subplots(figsize=(7, 6))
+            cmap = plt.get_cmap("tab10")
+            for i, nm in enumerate(names):
+                mm = labels == i
+                ax.scatter(syn_proj[mm, 0], syn_proj[mm, 1], s=8, color=cmap(i), alpha=.5, label=nm, linewidths=0)
+            ax.set_title(f"{title} ({ptag})"); ax.legend(markerscale=2, fontsize=9)
+            ax.set_xticks([]); ax.set_yticks([])
+            fig.tight_layout(); fig.savefig(os.path.join(outdir, fname), dpi=140); plt.close(fig)
 
     # (3) per-view cosine-to-studio vs EXP-3 R@1
     order = sorted(angles, key=lambda a: per_view[a]["mean_cos_to_studio"], reverse=True)

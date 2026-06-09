@@ -26,8 +26,8 @@ We compare three sets of images:
 >   off the vectors; a value far above *chance* means the model encodes that property strongly.
 > - **Silhouette** (−1 to 1) — how "clustered" groups are: ≈1 tight, well-separated blobs; ≈0 no real
 >   clustering (one connected cloud); below 0 the groups overlap.
-> - **t-SNE / PCA plots** — ways to squash the 1024-number vectors down to a 2-D map so we can eyeball
->   them; nearby dots ≈ similar images.
+> - **t-SNE / PCA / UMAP plots** — three ways to squash the 1024-number vectors down to a 2-D map so we
+>   can eyeball them; nearby dots ≈ similar images.
 >
 > (This study uses the similarity metrics above, not the recognition metrics — **GAP**, **GAP⁻**, **ACC**,
 > **R@1** — which are defined in the [experiments README](../README.md); only **R@1** reappears here, in §4.)
@@ -103,11 +103,15 @@ vector space — but its silhouette ≈ 0, meaning it's a smooth gradient layere
 but that's a property of the *painting itself*, not a random setting.)
 
 The 2-D maps show the same thing — soft angle structure (watch the broken `right upper` view break away),
-and floor texture scattered at random:
+and floor texture scattered at random. **t-SNE** (top) and **UMAP** (bottom) tell the same story:
 
-| coloured by camera angle | coloured by floor texture |
-|---|---|
-| ![2-D map by angle](figures/proj_synth_angle_tsne.png) | ![2-D map by floor](figures/proj_synth_floor_tsne.png) |
+| | coloured by camera angle | coloured by floor texture |
+|---|---|---|
+| **t-SNE** | ![angle, t-SNE](figures/proj_synth_angle_tsne.png) | ![floor, t-SNE](figures/proj_synth_floor_tsne.png) |
+| **UMAP** | ![angle, UMAP](figures/proj_synth_angle_umap.png) | ![floor, UMAP](figures/proj_synth_floor_umap.png) |
+
+*(No PCA panel here: a linear PCA-2D doesn't resolve the angle gradient that t-SNE/UMAP pick up — the
+0.99 linear-probe above is the quantitative proof that angle is encoded.)*
 
 ---
 
@@ -125,9 +129,16 @@ can tell them apart.
 
 *Accuracy near 1.0 = the groups barely overlap — they're clearly distinct regions of the space.*
 
-![The three image groups in 2-D](figures/proj_domain_tsne.png)
+The same three image sets, in all three 2-D projections (click any to enlarge):
 
-*(Same plot with PCA instead of t-SNE: [`figures/proj_domain_pca.png`](figures/proj_domain_pca.png).)*
+| t-SNE | PCA | UMAP |
+|---|---|---|
+| ![domain, t-SNE](figures/proj_domain_tsne.png) | ![domain, PCA](figures/proj_domain_pca.png) | ![domain, UMAP](figures/proj_domain_umap.png) |
+
+*The linear **PCA** view separates studio / synthetic / real most cleanly; **t-SNE** and **UMAP** mix them
+more, because they preserve *local* neighbourhoods — and locally a render sits next to its same-painting
+studio/real counterparts (the identity-dominates effect from §2). The 0.97–0.99 classifier scores above,
+not any single 2-D map, are the evidence the domains are distinct.*
 
 The more interesting question is **which gap is bigger** — synthetic-to-real, or studio-to-real? We measure
 the distance between the *average* vector of each group:
@@ -203,7 +214,7 @@ on standing out from *other* paintings, not just resembling your own — and EXP
 
 ## 7. How to reproduce
 
-Run in `.venv-dino` (DINOv3 + `transformers`; the analysis also needs `scikit-learn` + `matplotlib`).
+Run in `.venv-dino` (DINOv3 + `transformers`; the analysis also needs `scikit-learn`, `umap-learn` + `matplotlib`).
 
 ```bash
 # 1) compute DINOv3 ViT-L vectors for the 24,760 renders (GPU, ~2 min on an H100)
