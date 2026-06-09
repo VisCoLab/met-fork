@@ -128,7 +128,7 @@ framing the painting very unevenly**:
 - `right upper` — **grazing / edge-on**: the painting is a barely-visible sliver → ~1–3% ACC.
 
 This is the **known camera-rig bug** flagged in EXP-3, corroborated by a completely independent method in
-**[EXP-7 / the DINOv3 embedding analysis](../synth-embedding-analysis/README.md)**: there, the `right upper`
+**[EXP-7 / the DINOv3 embedding analysis](../dinov3-embedding-analysis/README.md)**: there, the `right upper`
 render sits far from its *own* studio source (cosine 0.44 vs `front`'s 0.84), bottoming out at exactly the
 view that scores worst here. Two models, two tests, same conclusion → **the bug lives in the camera poses, not
 in any one model.**

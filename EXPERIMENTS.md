@@ -92,7 +92,7 @@ Restricting synthetic queries to the committed painting classes (`Classification
 
 ⚠️ **Camera-framing artifact, not a clean domain result.** Verified by viewing renders: `right upper` is edge-on/grazing (painting a barely-visible sliver → 1.41%); `left upper`/`front` are well-framed (65–76% R@1). So the per-angle spread tracks framing, and "all angles" 36.93 is dragged down by the broken views. **Cross-check:** the well-framed synthetic **front R@1 64.84** approaches **step-2 real-photo ACC 69.59** — a well-framed render is about as recognizable as a real photo. **Action:** fix the `right upper` (and `*bottom`) camera poses + regenerate, then re-run for a clean per-angle measurement.
 
-**Standalone write-up: [`experiments/synthetic-retrieval/`](experiments/synthetic-retrieval/README.md)** — re-ran as job 7342800 (`slurm/synth_eval.slurm`, ~7 min H100); numbers reproduced exactly. Every number traces to `data/descriptors/synthetic/retrieval_summary.json` (new JSON dump added to `eval_synthetic_retrieval.py`).
+**Standalone write-up: [`experiments/renders-as-queries/`](experiments/renders-as-queries/README.md)** — re-ran as job 7342800 (`slurm/synth_eval.slurm`, ~7 min H100); numbers reproduced exactly. Every number traces to `data/descriptors/synthetic/retrieval_summary.json` (new JSON dump added to `eval_synthetic_retrieval.py`).
 
 ### EXP-4 — step 4, train/fine-tune WITH synthetic data ✅
 Question: does adding the synthetic gallery data to training improve recognition of **real painting photos** (step-2 set) without hurting the rest? Eval DB stays the original studio set → directly comparable.
@@ -202,7 +202,7 @@ aspect512 preprocessing): studio sources `MET/<id>/0.jpg` (4,952, paired) + real
 in **2 min @275 img/s**, batched since renders are all 512²) → `scripts/assemble_real_dino.py` +
 `scripts/analyze_synth_dino.py` (CPU `slurm/analysis_synth_dino.slurm`, job 7333977). Factors parsed by
 `scripts/synth_meta.py`. Artifacts: `data/synth_dino/analysis/{summary.json, 6 PNGs}`.
-**Standalone write-up with all figures: [`experiments/synth-embedding-analysis/`](experiments/synth-embedding-analysis/README.md).**
+**Standalone write-up with all figures: [`experiments/dinov3-embedding-analysis/`](experiments/dinov3-embedding-analysis/README.md).**
 
 **1) Content dominates; angle is the strong secondary axis; procedural nuisances are weakly encoded.**
 

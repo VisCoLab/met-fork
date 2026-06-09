@@ -1,4 +1,4 @@
-"""Figures for the real/synthetic mixing report (experiments/real-synth-mixing/README.md).
+"""Figures for the real/synthetic mixing report (experiments/real-vs-synthetic-mix/README.md).
 
 Parses the eval logs and writes two clean, plain-titled figures:
   fig_paintings.png      -- painting recognition (GAP- on the 148 real painting photos) vs
@@ -17,7 +17,7 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.dirname(HERE)
-LOGS = os.path.join(REPO, "logs"); DOCS = os.path.join(REPO, "experiments/real-synth-mixing/figures")
+LOGS = os.path.join(REPO, "logs"); DOCS = os.path.join(REPO, "experiments/real-vs-synthetic-mix/figures")
 PCTS = [0, 20, 40, 60, 80, 100]
 BLUE, RED, GREEN = "#1f77b4", "#d62728", "#2ca02c"
 

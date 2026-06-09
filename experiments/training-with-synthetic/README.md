@@ -110,7 +110,7 @@ same learning-rate schedule, same everything else). So this is the honest measur
 non-painting exhibits the synthetic set never depicts. That tells us the renders aren't helping by simply
 adding painting examples — they teach the model **lighting, viewpoint, and glass-glare invariance** that
 transfers to real photos generally. (A companion analysis of *what* the synthetic images vary is in the
-[DINOv3 embedding study](../synth-embedding-analysis/README.md).)
+[DINOv3 embedding study](../dinov3-embedding-analysis/README.md).)
 
 ---
 
