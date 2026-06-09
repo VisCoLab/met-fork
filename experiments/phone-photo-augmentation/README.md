@@ -87,17 +87,29 @@ differs. Closed world → no distractors → GAP = GAP⁻. Differences ≤ ~2 po
 noise floor around it. JPEG sits inside the band (a tie); blur, sensor and the three-way stack fall
 below it, and the more aggressive the augmentation, the bigger the drop.*
 
-**Full-benchmark confirmation — best arm (+JPEG) vs the baseline**, original 397k studio DB:
+**Full-benchmark confirmation — best arm (+JPEG) vs the baseline.** Same models, now evaluated the
+hard way: the search database is the original **397,121 studio photos** (not the 12k painting world
+above). Two query sets, reported separately:
 
-| model | full GAP | full GAP⁻ | full ACC | paint GAP⁻ (148, full DB) | paint ACC |
-|---|--:|--:|--:|--:|--:|
-| base (all-renders) | 32.68 | 51.94 | 54.34 | 70.90 | 72.30 |
-| +JPEG | 33.53 | 51.89 | 54.54 | 68.63 | 70.27 |
+**All 1,003 real Met queries** — the whole benchmark (GAP additionally counts the 18,316 distractor
+queries; K/τ tuned on the validation set):
 
-*Full-DB numbers: GAP includes the 18,316 distractors; the painting slice uses fixed K=7, τ=50 (EXP-2
-protocol). The confirmation upholds the tie: overall GAP⁻/ACC are flat (−0.05 / +0.20), the
-distractor-sensitive GAP ticks up (+0.85 — mild JPEG seems to help reject junk queries a little), and
-the 148-photo painting slice ticks down (−2.3 GAP⁻) — every delta at or below the noise floor. Nothing
+| model | GAP | GAP⁻ | ACC |
+|---|--:|--:|--:|
+| **base — no phone aug** (= the all-renders model) | 32.68 | 51.94 | 54.34 |
+| +JPEG | 33.53 | 51.89 | 54.54 |
+
+**Only the 148 painting queries** — the same photos as the closed-world table above, but now the right
+painting must be found among all 397k (fixed K = 7, τ = 50, the EXP-2 protocol):
+
+| model | GAP⁻ | ACC |
+|---|--:|--:|
+| **base — no phone aug** (= the all-renders model) | 70.90 | 72.30 |
+| +JPEG | 68.63 | 70.27 |
+
+*The confirmation upholds the tie: on the whole benchmark, GAP⁻/ACC are flat (−0.05 / +0.20) and the
+distractor-sensitive GAP ticks up (+0.85 — mild JPEG seems to help reject junk queries a little); on
+the painting queries +JPEG ticks down (−2.3 GAP⁻) — every delta at or below the noise floor. Nothing
 here changes the headline: no gain from phone augmentation.*
 
 ![Full-benchmark confirmation](figures/fig_confirm.png)

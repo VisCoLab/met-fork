@@ -150,9 +150,9 @@ def fig_confirm():
     if "base" not in have or len(have) < 2:
         print(f"fig_confirm.png SKIPPED -- full-benchmark logs not ready (have: {have})"); return
     arms = [a for a in ARMS if a in have]
-    metrics = [("paint_gnd", "full-DB painting GAP-", RED),
-               ("gnd", "whole-benchmark GAP-", BLUE),
-               ("gap", "whole-benchmark GAP", GREEN)]
+    metrics = [("paint_gnd", "148 painting queries — GAP-", RED),
+               ("gnd", "all 1,003 Met queries — GAP-", BLUE),
+               ("gap", "all queries + 18k distractors — GAP", GREEN)]
     xs = list(range(len(arms))); n = len(metrics); w = 0.8 / n
     fig, ax = plt.subplots(figsize=(8.0, 5.0))
     for j, (key, lab, col) in enumerate(metrics):
