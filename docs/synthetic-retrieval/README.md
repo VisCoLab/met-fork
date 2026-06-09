@@ -69,9 +69,25 @@ can still find the right painting from a render, the render genuinely depicts th
 
 ---
 
-## 2. Results — overall and by camera view
+## 2. Results — paper baseline vs. our retrieval, and by camera view
 
-All 24,760 renders, queried against the 397k studio database (rows sorted best→worst R@1):
+**How the metrics line up.** The original paper and our reproduction are scored on the **real** Met test
+queries with the benchmark's **GAP / GAP⁻ / ACC**; *this* experiment scores the **same model** on the
+**synthetic renders** with **recall@k**. The paper never ran synthetic-render retrieval, so those cells
+are blank — the comparable recognition axis is the paper's **ACC** (real top-1) vs our **R@1** (synthetic top-1).
+
+| Model (full Met test) | GAP | GAP⁻ | ACC | R@1 | R@5 | R@10 |
+|---|--:|--:|--:|--:|--:|--:|
+| **Original paper** — R18-SWSL Con-Syn+Real-closest | 36.1 | 52.4 | 55.0 | — | — | — |
+| **Ours** — step-1 reproduction | 35.97 | 52.14 | 54.64 | **36.93** | **43.97** | **46.81** |
+
+> GAP / GAP⁻ / ACC are on the **1,003 real Met test queries** (GAP also ranks the 18,316 distractors);
+> R@1/5/10 are on the **24,760 synthetic renders** (no distractors → GAP is undefined here). The two
+> blocks use **different query sets**, so this is **not** a like-for-like comparison — it just places the
+> synthetic retrieval beside the model's real-benchmark standing. Our reproduction matches the paper on
+> the real benchmark (GAP 35.97 vs 36.1).[^authors]
+
+**By camera view** (our synthetic renders, sorted best→worst R@1):
 
 | camera view | N | R@1 | R@5 | R@10 |
 |---|--:|--:|--:|--:|
@@ -97,17 +113,20 @@ painting is actually a **painting test query**. We use the project's single comm
 **122 distinct classes**; the painting subset is the renders of those 122 classes (122 × 5 views = 610
 renders). Same model, same database.
 
-| group | N | R@1 (all angles) | R@1 `front` | R@1 `left upper` |
-|---|--:|--:|--:|--:|
-| all synthetic | 24,760 | 36.93 | 64.84 | 75.85 |
-| **paintings (`Classification=="Paintings"`, 122 classes)** | 610 | **40.00** | **70.49** | **81.97** |
+The paper publishes **no painting breakdown**, so the baseline here is *our* step-1 model on the **148
+real** painting queries, set against the **610 synthetic** painting renders:
 
-Paintings score **~3 points higher** on all-angles R@1 (40.0 vs 36.9) and higher on every view — the same
-picture, slightly sharper. The key cross-check is the **`front` view: R@1 = 70.49%**, essentially equal to
-the **69.59% accuracy this same model achieves on *real* visitor photos of paintings** (the same 148-query
-`Classification=="Paintings"` slice, scored on the full 397k DB). In other words, **a well-framed render is
-about as recognizable as a real photo** — the synthetic content is faithful; the limitation is the camera
-rig, not the rendering.
+| Paintings (`Classification=="Paintings"`) | GAP | GAP⁻ | ACC | R@1 | R@5 | R@10 |
+|---|--:|--:|--:|--:|--:|--:|
+| **Ours** — step-1, real painting queries (148) | 39.50 | 67.86 | 69.59 | — | — | — |
+| **Ours** — step-1, synthetic painting renders (610) | — | — | — | **40.00** | **46.39** | **49.18** |
+
+(GAP/GAP⁻/ACC on the 148 real queries; R@k on the 610 synthetic renders — different query sets, same model.)
+The synthetic paintings beat the full synthetic set on every view (all-angles R@1 40.0 vs 36.9; `front`
+70.5 vs 64.8; `left upper` 82.0 vs 75.9). The key cross-check: the **`front` view's synthetic R@1 = 70.49%**
+is essentially equal to the model's **69.59% ACC on the *real* painting photos** above — **a well-framed
+render is about as recognizable as a real photo.** The synthetic content is faithful; the limitation is the
+camera rig, not the rendering.
 
 ---
 
@@ -151,8 +170,11 @@ regenerated.
 
 ## 6. Caveats
 
-- **Recall, not GAP.** Every query has a correct answer in the database (no distractors), so these numbers
-  are a pure recognition probe and are **not comparable** to the GAP/GAP⁻/ACC scores elsewhere.
+- **Recall, not GAP — the paper comparison is contextual.** The synthetic renders have no distractors, so
+  R@1/5/10 are a pure recognition probe, **not** a like-for-like substitute for the paper's GAP/GAP⁻/ACC
+  (different metric *and* different query set). The §2/§3 tables line the two up only to give the synthetic
+  numbers a familiar yardstick — the honest bridge is the model's real-photo **ACC** (kNN-vote top-1) ≈
+  well-framed render **R@1** (nearest-neighbour top-1).
 - **Per-angle spread is a framing artifact**, not a clean measurement of "domain difficulty by viewpoint" —
   the rig must be fixed first (§4).
 - **"Correct" = source class.** A render is judged against the single Met painting it was built from; if a
@@ -185,3 +207,6 @@ Code: [`scripts/extract_synthetic.py`](../../scripts/extract_synthetic.py) (step
 [^name]: The checkpoint is named after the paper's method, **Con-Syn+Real-closest**. There, "Syn" means
 the contrastive loss's *augmented-view* positive (a standard data-augmentation trick), **not** our
 synthetic gallery dataset. The model is trained entirely on real Met studio photos.
+
+[^authors]: Sanity check on our eval pipeline: re-scoring the authors' *released* descriptors gives
+GAP 36.10 / GAP⁻ 52.41 / ACC 55.03 — matching the paper's 36.1 / 52.4 / 55.0.
