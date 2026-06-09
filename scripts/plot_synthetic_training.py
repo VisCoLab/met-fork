@@ -11,7 +11,7 @@ Full GAP / GAP-/ ACC are at each model's own best (K, tau); the paint columns ar
 Run (NOT on a login node):
   srun --account=pl0896-03 --partition=standard --time=0:10:00 --mem=4G \
       .venv-dino/bin/python scripts/plot_synthetic_training.py
-Writes -> docs/training-with-synthetic/figures/{gap_by_config.png, baseline_vs_synth.png}
+Writes -> experiments/training-with-synthetic/figures/{gap_by_config.png, baseline_vs_synth.png}
 """
 import os
 import matplotlib
@@ -19,7 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-OUT = "docs/training-with-synthetic/figures"
+OUT = "experiments/training-with-synthetic/figures"
 os.makedirs(OUT, exist_ok=True)
 
 # ----- palette -----

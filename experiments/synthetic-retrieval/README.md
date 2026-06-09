@@ -19,18 +19,15 @@ benchmark — all **397,121** studio photos / 224,408 classes — and **(B)** a 
 **GAP / GAP⁻ / ACC** and **recall@k**, per camera angle, alongside the **paper's real-photo benchmark** and our
 reproduction's real-photo numbers as baselines.
 
-> **How to read the numbers.** All scores are 0–100, higher is better. Two query types appear: **real** photos
-> (the paper's test queries) and our **synthetic** renders.
+> **How to read the numbers.** All scores are 0–100, higher is better; metric definitions (**GAP**,
+> **GAP⁻**, **ACC**, **R@1/5/10**) are in the [experiments README](../README.md). Two query types appear:
+> **real** photos (the paper's test queries) and our **synthetic** renders. Specific to this experiment:
 > - **the two databases** — what we search against. **(A) full Met:** 397,121 studio photos / 224,408 classes
 >   (the original benchmark). **(B) paintings-only:** 12,403 photos of the 4,898 `Classification=="Paintings"`
 >   classes (a smaller, easier gallery).
-> - **GAP** — the paper's headline: ranks *every* query by confidence and must also push the **18,316
->   distractor** queries (real photos of things not in the collection) down. The hardest, so the lowest.
-> - **GAP⁻** — same, but distractors removed. With no distractors this **equals the closed-world GAP**, so
->   GAP (with distractors) vs GAP⁻ (without) shows both treatments at once.
-> - **ACC** — top-1 accuracy on the non-distractor queries.
-> - **recall@k (R@1/5/10)** — is the correct painting among the **k** nearest database photos. **R@1 == ACC**
->   here (the τ=50 kNN vote follows the single nearest neighbour); R@5/R@10 add the "in the top-k" view.
+> - **GAP includes the 18,316 distractors** (open-set); the renders carry none of their own, so **GAP⁻ equals
+>   the closed-world GAP** — the two columns show both treatments at once.
+> - **R@1 == ACC** here (the τ=50 kNN vote follows the single nearest neighbour); R@5/R@10 add the "in the top-k" view.
 > - **correct** — the query retrieves a studio photo of the same Met class (for a render, its source painting).
 > - **camera angle** — the 5 gallery viewpoints: `front`, `left/right upper`, `left/right bottom`.
 

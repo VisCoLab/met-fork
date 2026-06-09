@@ -15,16 +15,11 @@ painting out of ~12 k painting photos) and the **full Met benchmark** (find the 
 **all 397 k** museum photos while also ignoring ~18 k "distractor" junk queries). The question: as we
 trade real training photos for synthetic ones, does recognizing real paintings get better or worse?
 
-> **How to read the numbers** — all scores are 0–100, higher is better.
-> - **ACC** (accuracy): of the real painting photos, the share whose top match is the correct artwork.
-> - **GAP⁻**: the paper's main quality score *without* distractors — like accuracy, but it also rewards
->   being **confident on correct answers and unsure on wrong ones** (it ranks every answer and checks
->   that the good ones float to the top).
-> - **GAP**: the full score *with* distractors — the model must also push ~18 k junk queries (non-art,
->   random photos) **below** the real answers. Only the full benchmark has distractors; the closed
->   world has none, so there GAP = GAP⁻.
+> **How to read the numbers** — all scores are 0–100, higher is better; metric definitions (**GAP**,
+> **GAP⁻**, **ACC**) are in the [experiments README](../README.md). Specific to this experiment:
 > - **two test settings**: *closed world* = search only the 12,403 real painting photos (easy);
->   *full benchmark* = search all 397,121 photos (hard — the original Met task).
+>   *full benchmark* = search all 397,121 photos (hard — the original Met task). Only the full benchmark
+>   has distractors, so there GAP < GAP⁻; the closed world has none, so GAP = GAP⁻.
 > - **"paint" columns** = scored on just the **148 real painting photos**; the plain GAP/GAP⁻/ACC =
 >   scored over all **1,003** real Met queries.
 
@@ -64,12 +59,12 @@ includes the 18 k distractors, GAP⁻ removes them, ACC is top-1 on the 1,003 re
 **reference** row is the original model trained on all 397 k real photos (paintings + everything),
 scored identically. Best run (all-synthetic) in bold.*
 
-![Painting recognition vs training mix](fig_paintings.png)
+![Painting recognition vs training mix](figures/fig_paintings.png)
 
 *The headline: more synthetic training data → better recognition of the same 148 real painting photos,
 in both the easy closed world (blue) and the hard full benchmark (red). Dotted = the all-real-data model.*
 
-![Whole Met benchmark vs training mix](fig_full_benchmark.png)
+![Whole Met benchmark vs training mix](figures/fig_full_benchmark.png)
 
 *On the whole benchmark, GAP⁻ and ACC rise with synthetic and nearly reach the all-real-data model
 (dotted). GAP (with distractors) stays lower — these painting-only models are weaker at rejecting the
@@ -102,7 +97,7 @@ superset of the previous (same shuffle, longer prefix); recipe and evaluation ar
 | 18,604 (1.50×) | 74.39 | 75.68 | 32.18 | 51.81 | 54.24 | 70.93 |
 | **24,490 (1.97×, all renders)** | **75.09** | **76.35** | **32.68** | **51.94** | **54.34** | **70.90** |
 
-![Does more synthetic data keep helping?](fig_synth_scaling.png)
+![Does more synthetic data keep helping?](figures/fig_synth_scaling.png)
 
 *Painting recognition (GAP⁻ on the 148 real photos) as we add more synthetic training images, 0% real.
 Dotted lines = the all-real baseline; every scaling point sits far above it.*

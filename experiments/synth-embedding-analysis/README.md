@@ -28,6 +28,9 @@ We compare three sets of images:
 >   clustering (one connected cloud); below 0 the groups overlap.
 > - **t-SNE / PCA plots** — ways to squash the 1024-number vectors down to a 2-D map so we can eyeball
 >   them; nearby dots ≈ similar images.
+>
+> (This study uses the similarity metrics above, not the recognition metrics — **GAP**, **GAP⁻**, **ACC**,
+> **R@1** — which are defined in the [experiments README](../README.md); only **R@1** reappears here, in §4.)
 
 ## TL;DR
 

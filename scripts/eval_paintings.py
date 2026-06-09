@@ -1,7 +1,7 @@
 """Step 2: evaluate a model ONLY on the painting Met queries.
 
 CANONICAL painting test set = `Classification == "Paintings"` = the **148** query paths committed in
-`data/gt_paint/testset.json` (the single definition used project-wide: docs/real-synth-mixing and
+`data/gt_paint/testset.json` (the single definition used project-wide: experiments/real-synth-mixing and
 `scripts/eval_paintings_cls.py`). Reuses step-1's tuned K=7, tau=50 (val has too few paintings to
 retune) and the full 397k studio DB index. Reports GAP (+all distractors), and GAP- / ACC (no
 distractors) over the 148 painting queries.

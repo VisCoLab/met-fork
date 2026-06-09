@@ -18,14 +18,9 @@ are used *only for training*, never as answers). The synthetic images never ente
 the two runs are directly comparable and any difference is down to the added data.
 
 > **How to read the numbers.** The task: given a query photo, name which of ~224k museum exhibits it
-> shows — or correctly reject it as "not in the collection". All scores are 0–100, higher is better.
-> - **GAP** (Global Average Precision) — the **headline metric**: ranks *every* query by the model's
->   confidence and rewards putting correct, confident answers first *and* giving junk low confidence.
-> - **GAP⁻** — the same, but scored on the real exhibit queries only (junk removed): pure recognition,
->   without the "reject the junk" part.
-> - **Accuracy (ACC)** — of the in-collection queries, the fraction whose top guess is correct.
-> - **distractors / "junk"** — query photos of things *not* in the collection (other artworks, non-art).
->   A good model gives them low confidence. They make GAP much harder than plain accuracy.
+> shows — or correctly reject it as "not in the collection". All scores are 0–100, higher is better;
+> metric definitions (**GAP**, **GAP⁻**, **ACC**, distractors) are in the [experiments README](../README.md).
+> Specific to this doc:
 > - **paintings** — the **148** test queries with `Classification == "Paintings"` (the committed
 >   painting test set, used project-wide). Our contribution targets paintings, so we track them separately.
 > - **clean A/B** — two runs identical in *everything* except the one thing under test (here: +synthetic
