@@ -82,7 +82,8 @@ are blank — the comparable recognition axis is the paper's **ACC** (real top-1
 | **Ours** — step-1 reproduction | 35.97 | 52.14 | 54.64 | **36.93** | **43.97** | **46.81** |
 
 > GAP / GAP⁻ / ACC here are on the **1,003 real Met test queries** (paper protocol; GAP ranks the 18,316
-> distractors); R@1/5/10 are on the **24,760 synthetic renders**. Different query sets — the row places
+> distractors); R@1/5/10 are on the **24,760 synthetic renders** (the all-views aggregate — the same three
+> numbers as the **ALL angles** row of the per-view table just below). Different query sets — the row places
 > synthetic retrieval *beside* the real-benchmark standing, not against it. (The renders can also be given
 > GAP/GAP⁻/ACC by borrowing those same distractors — see the per-view table just below and §3.) Our
 > reproduction matches the paper on the real benchmark (GAP 35.97 vs 36.1).[^authors]
