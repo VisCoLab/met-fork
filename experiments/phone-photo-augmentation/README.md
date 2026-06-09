@@ -18,7 +18,7 @@ exact same 24,490 renders, the same R18-SWSL recipe, 10 epochs, seed 0 — so ea
 against the no-augmentation baseline. Artifacts are injected **only during training** (and to *both*
 images of every contrastive pair); the **real test photos are never touched**. We score every model on
 the **same 148 real painting photos**, primarily in the **closed painting world** (search the 12,403
-painting photos), then confirm the best on the **full 397k Met benchmark**.
+painting photos), then confirm every arm on the **full 397k Met benchmark**.
 
 > **How to read the numbers** — all scores are 0–100, higher is better; **GAP / GAP⁻ / ACC** are defined
 > once in the [experiments README](../README.md). The headline metric here is **GAP⁻ on the closed
@@ -87,7 +87,7 @@ differs. Closed world → no distractors → GAP = GAP⁻. Differences ≤ ~2 po
 noise floor around it. JPEG sits inside the band (a tie); blur, sensor and the three-way stack fall
 below it, and the more aggressive the augmentation, the bigger the drop.*
 
-**Full-benchmark confirmation — best arm (+JPEG) vs the baseline.** Same models, now evaluated the
+**Full-benchmark confirmation — all arms vs the baseline.** Same five models, now evaluated the
 hard way: the search database is the original **397,121 studio photos** (not the 12k painting world
 above). Two query sets, reported separately:
 
@@ -98,6 +98,9 @@ queries; K/τ tuned on the validation set):
 |---|--:|--:|--:|
 | **base — no phone aug** (= the all-renders model) | 32.68 | 51.94 | 54.34 |
 | +JPEG | 33.53 | 51.89 | 54.54 |
+| +sensor (noise + resolution) | 32.26 | 50.85 | 53.44 |
+| +blur | 32.80 | 51.40 | 54.24 |
+| +all three | 30.84 | 49.92 | 52.74 |
 
 **Only the 148 painting queries** — the same photos as the closed-world table above, but now the right
 painting must be found among all 397k (fixed K = 7, τ = 50, the EXP-2 protocol):
@@ -106,15 +109,20 @@ painting must be found among all 397k (fixed K = 7, τ = 50, the EXP-2 protocol)
 |---|--:|--:|
 | **base — no phone aug** (= the all-renders model) | 70.90 | 72.30 |
 | +JPEG | 68.63 | 70.27 |
+| +sensor (noise + resolution) | 66.89 | 68.24 |
+| +blur | 67.47 | 68.92 |
+| +all three | 67.59 | 68.92 |
 
-*The confirmation upholds the tie: on the whole benchmark, GAP⁻/ACC are flat (−0.05 / +0.20) and the
-distractor-sensitive GAP ticks up (+0.85 — mild JPEG seems to help reject junk queries a little); on
-the painting queries +JPEG ticks down (−2.3 GAP⁻) — every delta at or below the noise floor. Nothing
-here changes the headline: no gain from phone augmentation.*
+*The confirmation upholds the closed-world verdict, on both query sets. On the **painting queries**
+every augmented model lands **2.3–4.0 GAP⁻ below base** — no arm helps. On the **whole benchmark** the
+spread is smaller and mixed: JPEG +0.85 GAP and blur +0.12 (≈ ties), sensor −0.42, all-three −1.84 —
+the only positive delta anywhere (JPEG's +0.85) is small and on the **distractor-rejection** side, not
+the painting side. Nothing here changes the headline: no gain from phone augmentation.*
 
 ![Full-benchmark confirmation](figures/fig_confirm.png)
 
-*Base vs +JPEG on the full 397k benchmark — the two models are equivalent on every metric.*
+*All five models on the full 397k benchmark — the augmented models track the baseline on the
+whole-benchmark scores and sit slightly below it on the painting queries.*
 
 ## What it means
 
@@ -180,8 +188,10 @@ for arm in jpeg blur sensor phoneall; do
   sbatch --dependency=afterok:$tid --job-name=met-ev-aug-$arm \
          slurm/paint_eval.slurm data/models/r18SWSL_paint_synth_$arm 10 aug_$arm
 done
-# 3) full-benchmark confirmation for the baseline + best arm(s):
-sbatch --job-name=met-full-aug-<arm> slurm/eval_full.slurm data/models/r18SWSL_paint_synth_<arm> 10 aug_<arm>
+# 3) full-benchmark confirmation, one job per arm (base reuses the EXP-8 synthall full eval):
+for arm in jpeg blur sensor phoneall; do
+  sbatch --job-name=met-full-aug-$arm slurm/eval_full.slurm data/models/r18SWSL_paint_synth_$arm 10 aug_$arm
+done
 # 4) figures (montage + results):
 .venv-dino/bin/python scripts/plot_phone_aug.py     # -> figures/fig_examples.png, fig_arms.png, fig_confirm.png
 ```

@@ -163,9 +163,9 @@ def fig_confirm():
             if v is not None:
                 ax.text(r.get_x() + r.get_width()/2, v + 0.2, f"{v:.1f}", ha="center", fontsize=7)
     ax.set_xticks(xs); ax.set_xticklabels([LABELS[a] for a in arms])
-    ax.set_ylabel("score (%)"); ax.set_ylim(0, max(fm[a]["paint_gnd"] or 0 for a in arms) + 8)
+    ax.set_ylabel("score (%)"); ax.set_ylim(0, max(fm[a]["paint_gnd"] or 0 for a in arms) + 13)
     ax.set_title("Full-benchmark confirmation (original 397k studio DB)\nbaseline vs phone-augmented")
-    ax.grid(axis="y", alpha=.3); ax.legend(loc="upper right", framealpha=.95, fontsize=8.5)
+    ax.grid(axis="y", alpha=.3); ax.legend(loc="upper center", ncol=3, framealpha=.95, fontsize=8)
     fig.tight_layout(); fig.savefig(os.path.join(DOCS, "fig_confirm.png"), dpi=150); plt.close(fig)
     print("wrote fig_confirm.png | full:", {a: fm[a] for a in arms})
 

@@ -312,10 +312,12 @@ painting recognition rides on fine brushwork/texture detail; blur/noise/downscal
 views of every contrastive pair, while the useful invariances (viewpoint/glass/lighting) were already
 supplied by the renders (EXP-7) + the base recipe. The remaining studio→phone gap is evidently **not**
 pixel-degradation-shaped. Headroom is in more/better renders (EXP-8 scaling + camera-rig fix), not
-heavier augmentation. **Full-benchmark confirmation** (job 7356779, 397k DB) upholds the tie — base
-vs +jpeg: GAP 32.68→33.53, GAP⁻ 51.94→51.89, ACC 54.34→54.54; paint slice GAP⁻ 70.90→68.63 — every
-delta at/below noise. **Caveats:** single seed, 148 photos (fold halves spread up to 6 pts — sensor
-70.41/76.33), one strength schedule (p=0.5, mild–moderate ranges).
+heavier augmentation. **Full-benchmark confirmation, all arms** (397k DB; jobs 7356779 jpeg,
+7358858–60 blur/sensor/phoneall) upholds it on both query sets — full GAP: base 32.68, +jpeg 33.53,
++blur 32.80, +sensor 32.26, +all 30.84; paint-slice GAP⁻ (148q, K=7/τ=50): base **70.90** vs
+68.63/67.47/66.89/67.59 — every arm 2.3–4.0 below base on paintings; jpeg's +0.85 GAP (the only
+positive delta) is distractor-side, not painting-side. **Caveats:** single seed, 148 photos (fold
+halves spread up to 6 pts — sensor 70.41/76.33), one strength schedule (p=0.5, mild–moderate ranges).
 
 **Standalone write-up: [`experiments/phone-photo-augmentation/`](experiments/phone-photo-augmentation/README.md).**
 
