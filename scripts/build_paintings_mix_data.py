@@ -56,4 +56,21 @@ for r, s in RATIOS:
     n_cls = len({e["id"] for e in entries})
     print(f"  {tag:>8}: real {n_real:>6,} + synth {n_synth:>6,} = {len(entries):,} imgs / {n_cls:,} classes "
           f"-> data/gt_paint_mix_{tag}")
-print("\ntrain: sbatch --job-name=met-tr-<tag> paint_train.slurm data/gt_paint_mix_<tag> data/aug paint_<tag>")
+
+# Synth-only DATA-SCALING runs (beyond the fixed 12,403 budget): 0% real, longer prefixes of the
+# SAME shuffled synth_pool -> nested supersets of the 0r100s (1x) set. 200% (24,806) exceeds the
+# pool, so the top point is capped at all 24,490 renders (~1.97x). Eval stays the same real closed
+# world + full benchmark (synthetic in TRAINING only).
+SCALE = [("synth125", round(1.25 * TOTAL)), ("synth150", round(1.50 * TOTAL)), ("synthall", len(synth_pool))]
+for tag, n in SCALE:
+    n = min(n, len(synth_pool))
+    entries = synth_pool[:n]                                  # 0% real
+    out = os.path.join(REPO, f"data/gt_paint_{tag}"); os.makedirs(out, exist_ok=True)
+    json.dump(entries, open(os.path.join(out, "MET_database.json"), "w"))
+    for j in ("valset.json", "testset.json"):
+        link(os.path.join(GT_PAINT, j), os.path.join(out, j))
+    n_cls = len({e["id"] for e in entries})
+    print(f"  {tag:>9}: synth {n:>6,} imgs (x{n / TOTAL:.2f} budget) / {n_cls:,} classes -> data/gt_paint_{tag}")
+
+print("\ntrain mix:     sbatch --job-name=met-tr-<tag> paint_train.slurm data/gt_paint_mix_<tag> data/aug paint_<tag>")
+print("train scaling: sbatch --job-name=met-tr-<tag> paint_train.slurm data/gt_paint_<tag>     data/aug paint_<tag>")

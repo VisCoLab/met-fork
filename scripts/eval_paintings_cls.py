@@ -25,7 +25,10 @@ train_labels = np.array([e["id"] for e in json.load(open(os.path.join(INFO, "MET
 
 RUNS = [(0, "data/descriptors_full_0s"), (20, "data/descriptors_full_20s"), (40, "data/descriptors_full_40s"),
         (60, "data/descriptors_full_60s"), (80, "data/descriptors_full_80s"), (100, "data/descriptors_full_100s"),
-        ("ref", "data/descriptors")]                 # step-1 full-data model (EXP-1)
+        ("ref", "data/descriptors"),                 # step-1 full-data model (EXP-1)
+        ("synth125", "data/descriptors_full_synth125"),   # synth-only data-scaling runs (>100% budget)
+        ("synth150", "data/descriptors_full_synth150"),
+        ("synthall", "data/descriptors_full_synthall")]
 
 print(f"painting queries (Classification==Paintings): {int(paint_mask.sum())} | "
       f"distractors: {int(distr_mask.sum())} | K={K} tau={TAU}", flush=True)

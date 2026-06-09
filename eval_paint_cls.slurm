@@ -7,7 +7,7 @@
 #SBATCH --partition=standard
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
-#SBATCH --time=1:00:00
+#SBATCH --time=2:00:00
 #SBATCH --job-name=met-paint-cls
 #SBATCH --output=logs/%x-%j.out
 

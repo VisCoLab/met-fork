@@ -48,7 +48,8 @@ clsf = last("met-paint-cls-*.out"); full_paint, full_paint_ref = {}, None
 if clsf:
     for m in re.finditer(r"CLSPAINT synth=(\w+) GAP [\d.]+ GAP- ([\d.]+)", open(clsf).read()):
         if m.group(1) == "ref": full_paint_ref = float(m.group(2))
-        else: full_paint[int(m.group(1))] = float(m.group(2))
+        elif m.group(1).isdigit(): full_paint[int(m.group(1))] = float(m.group(2))
+        # else: scaling keys (synth125/150/all) parsed separately for Fig 3
 full = [full_paint.get(p) for p in PCTS]
 
 def topaxis(ax):
@@ -87,3 +88,31 @@ if all(v is not None for v in fgap):
 else:
     print("fig_full_benchmark.png SKIPPED — full-benchmark logs missing")
 print("closed:", closed, "| full-paint:", full, "| full GAP/GAP-/ACC:", fgap, fgnd, facc)
+
+# Fig 3 — synth-only DATA SCALING (0% real; more synthetic images, beyond the 12,403 budget)
+def closed_for(tag):
+    f = last("met-ev-0r100s-*.out" if tag == "1x" else f"met-ev-{tag}-*.out")
+    return find1(open(f).read(), r"2-fold mean:\s*GAP-\s*([\d.]+)") if f else None
+def fullpaint_for(key):
+    if not clsf: return None
+    m = re.search(rf"CLSPAINT synth={key} GAP [\d.]+ GAP- ([\d.]+)", open(clsf).read())
+    return float(m.group(1)) if m else None
+SC_IMGS   = [12403, 15504, 18604, 24490]
+SC_CLOSED = [closed_for(t) for t in ["1x", "synth125", "synth150", "synthall"]]
+SC_FULLP  = [fullpaint_for(k) for k in ["100", "synth125", "synth150", "synthall"]]
+base_closed = closed[0]; base_fullp = full_paint.get(0)   # all-real baselines (0 synthetic)
+if all(v is not None for v in SC_CLOSED) and all(v is not None for v in SC_FULLP):
+    fig, ax = plt.subplots(figsize=(7.8, 4.9))
+    ax.plot(SC_IMGS, SC_CLOSED, "o-", color=BLUE, lw=2.5, ms=8, label="closed painting world (search 12.4k photos)")
+    ax.plot(SC_IMGS, SC_FULLP,  "s-", color=RED,  lw=2.5, ms=7, label="full Met benchmark (search 397k photos)")
+    if base_closed: ax.axhline(base_closed, color=BLUE, ls=":", lw=1.2, alpha=.55); ax.text(12600, base_closed + .25, f"all-real baseline {base_closed:.1f}", fontsize=7, color=BLUE)
+    if base_fullp:  ax.axhline(base_fullp,  color=RED,  ls=":", lw=1.2, alpha=.55); ax.text(12600, base_fullp + .25,  f"all-real baseline {base_fullp:.1f}", fontsize=7, color=RED)
+    ax.set_xlabel("number of synthetic training images (0% real)")
+    ax.set_ylabel("painting recognition  —  GAP- on 148 real photos (%)")
+    ax.set_title("Does MORE synthetic data keep helping?  (synth-only, beyond the 12,403 budget)")
+    ax.set_xticks(SC_IMGS); ax.set_xticklabels([f"{n:,}\n({n/12403:.2f}x)" for n in SC_IMGS])
+    ax.grid(alpha=.3); ax.legend(loc="center right", framealpha=.9)
+    fig.tight_layout(); fig.savefig(os.path.join(DOCS, "fig_synth_scaling.png"), dpi=150)
+    print("wrote fig_synth_scaling.png | scaling closed:", SC_CLOSED, "| scaling full-paint:", SC_FULLP)
+else:
+    print("fig_synth_scaling.png SKIPPED — scaling logs not all present")

@@ -87,6 +87,38 @@ in both the easy closed world (blue) and the hard full benchmark (red). Dotted =
 - **Takeaway:** for a painting recognizer, synthetic gallery renders aren't merely a cheap stand-in for
   real data — here they are *better* than the real studio images we have.
 
+## Does more synthetic data keep helping? (synth-only, beyond the budget)
+
+The sweep above capped every run at 12,403 training images, so "100% synthetic" used only ~half of the
+24,490 renders we have. Here we lift that cap: keep training **100% synthetic / 0% real** and simply
+**add more renders** — 1× (12,403, the existing point), 1.25×, 1.5×, and all 24,490 (~2×). Each set is a
+superset of the previous (same shuffle, longer prefix); recipe and evaluation are unchanged.
+
+| synthetic training images | paint GAP⁻ (closed) | paint ACC (closed) | GAP (full) | GAP⁻ (full) | ACC (full) | paint GAP⁻ (full) |
+|---|--:|--:|--:|--:|--:|--:|
+| *all-real baseline (12,403 real, 0 synthetic)* | *67.18* | *70.27* | *28.83* | *49.08* | *52.14* | *61.83* |
+| 12,403 (1.00×, = 100%-synth) | 72.47 | 73.65 | 31.32 | 51.47 | 54.04 | 70.04 |
+| 15,504 (1.25×) | 73.73 | 75.00 | 31.86 | 51.79 | 54.34 | 70.81 |
+| 18,604 (1.50×) | 74.39 | 75.68 | 32.18 | 51.81 | 54.24 | 70.93 |
+| **24,490 (1.97×, all renders)** | **75.09** | **76.35** | **32.68** | **51.94** | **54.34** | **70.90** |
+
+![Does more synthetic data keep helping?](fig_synth_scaling.png)
+
+*Painting recognition (GAP⁻ on the 148 real photos) as we add more synthetic training images, 0% real.
+Dotted lines = the all-real baseline; every scaling point sits far above it.*
+
+**Findings (scaling).**
+1. **Closed world: more synthetic keeps helping, no plateau.** GAP⁻ climbs 72.47 → 73.73 → 74.39 → 75.09
+   (≈ +2.6 from 1× to all, roughly linear). The synth-only model is **data-limited** here — generating
+   *more* gallery renders would likely push it further.
+2. **Full benchmark: it plateaus fast.** The painting slice gains +0.8 (70.04 → 70.81) from the first
+   extra batch, then flattens at ~70.9; overall GAP⁻/ACC barely move (+0.5 / +0.3). Beyond the
+   size-matched budget, extra synthetic data helps the *easy* painting task but not the *hard* 397k-DB
+   retrieval — there the bottleneck isn't painting-data quantity but the distractor problem.
+3. **Every scaling point still beats the all-real baseline by a wide margin** (closed +5–8, full painting
+   +9), reinforcing the headline. (This went against my prior guess that the "too clean" renders + the
+   broken `right upper` view would flatten it immediately — in the closed world they don't.)
+
 ## How we trained (identical to the paper's model — only the data changes)
 
 Every run uses the **same recipe** as our step-1 reproduction of the paper's best model (*R18-SWSL
@@ -162,8 +194,9 @@ sanity check, **not** a reported result.*
   columns are the ones comparable to the paper / EXP-2.
 - **The synthetic set still has the broken `right upper` camera view** (EXP-3 / EXP-7). The all-synthetic
   win happens *despite* that bad view — fixing the camera rig could help further.
-- **Fixed training size (12,403):** the all-synthetic run uses ~half of the 24,490 available renders; an
-  un-capped "use all synthetic" run might do even better.
+- **Beyond the fixed 12,403 budget:** the *Does more synthetic data keep helping?* section lifts the cap
+  — more renders keep helping in the closed world (up to GAP⁻ 75.1 with all 24,490 renders) but plateau
+  on the full benchmark (~70.9).
 
 ## Reproduce
 
