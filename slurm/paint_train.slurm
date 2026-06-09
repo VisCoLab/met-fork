@@ -20,20 +20,22 @@ cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs data/models
 
 INFO="${1:-data/gt_paint}"; IMROOT="${2:-data/}"; TAG="${3:-paint}"   # mix sweep: <mix_dir> data/aug <tag>
+AUG="${4:-base}"   # EXP-9 phone-photo augmentation arm: base|jpeg|blur|sensor|phoneall
 
 export TORCH_HOME="$SLURM_SUBMIT_DIR/data/torch_home"
 export PYTHONUNBUFFERED=1
 
-echo "host=$(hostname)  info=$INFO  im_root=$IMROOT  tag=$TAG  start=$(date)"
+echo "host=$(hostname)  info=$INFO  im_root=$IMROOT  tag=$TAG  aug=$AUG  start=$(date)"
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
 
-# Identical to slurm/train.slurm; ONLY --info_dir changes (closed painting world).
+# Identical to slurm/train.slurm; ONLY --info_dir (closed painting world) and --aug (EXP-9) change.
 .venv/bin/python -m code.examples.train_contrastive \
     ./data/models/r18SWSL_${TAG} \
     --net r18_sw-sup --pretrained \
     --pairs_type new_pos+new_neg \
     --emb_proj --pca \
     --seed 0 \
+    --aug "$AUG" \
     --info_dir "$INFO" \
     --im_root "$IMROOT" \
     --gpuid 0

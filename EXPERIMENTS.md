@@ -4,7 +4,7 @@ Running lab notebook: what we've done, the exact settings, results, and how to c
 Goal: beat the paper's best single model (**R18-SWSL Con-Syn+Real-closest, GAP 36.1**) by adding a
 synthetic gallery phone-photo dataset (+ a new method). Plan & targets-to-beat in `reference/README.md`.
 
-_Last updated: 2026-06-09._
+_Last updated: 2026-06-09 (EXP-9 added)._
 
 ## Status snapshot
 
@@ -288,6 +288,37 @@ closed-world numbers are **not** comparable to the paper's GAP 36.1 (12k vs 397k
 
 **Standalone write-up: [`experiments/real-vs-synthetic-mix/`](experiments/real-vs-synthetic-mix/README.md).**
 
+### EXP-9 — phone-photo augmentation on the synth-only recognizer ✅ (negative result)
+Iterates on EXP-8's best synth-only point (all **24,490** renders, 0% real → closed paint-DB GAP⁻
+**75.09**). EXP-7 said the renders are "too clean" → inject **phone-capture artifacts as train-time
+augmentation** (each at p=0.5, atop the paper's crop+jitter; never applied at eval): **jpeg** (re-encode
+q 30–90), **blur** (Gaussian σ 0.1–2 or 5×5 motion), **sensor** (downscale 0.3–0.7× + Gaussian noise
+σ 0.01–0.06), **phoneall** (all three). 4 independent runs, otherwise byte-identical recipe/data/seed
+(`--aug` flag in `train_contrastive.py` → `build_train_transform` in `code/utils/augmentations.py`;
+`base` arm verified == the original transform). Train jobs 7346709/11/13/15 (~1–1.3 h each), closed
+evals 7346710/12/14/16.
+
+| aug arm (closed paint DB, 148q, 2-fold CV) | GAP⁻ | ACC | Δ GAP⁻ |
+|---|--:|--:|--:|
+| **base (no phone aug)** | **75.09** | **76.35** | — |
+| +jpeg | 74.87 | 76.35 | −0.22 |
+| +sensor (noise+res) | 73.37 | 75.68 | −1.72 |
+| +blur | 72.22 | 73.65 | −2.87 |
+| +phoneall | 71.26 | 72.97 | −3.83 |
+
+**Finding: no arm beats the baseline; damage is monotone in augmentation aggressiveness.** JPEG = tie
+(identical ACC), all-three-stacked = worst (−3.8, beyond the ±2 noise floor). Read: instance-level
+painting recognition rides on fine brushwork/texture detail; blur/noise/downscale erase it on *both*
+views of every contrastive pair, while the useful invariances (viewpoint/glass/lighting) were already
+supplied by the renders (EXP-7) + the base recipe. The remaining studio→phone gap is evidently **not**
+pixel-degradation-shaped. Headroom is in more/better renders (EXP-8 scaling + camera-rig fix), not
+heavier augmentation. **Full-benchmark confirmation** (job 7356779, 397k DB) upholds the tie — base
+vs +jpeg: GAP 32.68→33.53, GAP⁻ 51.94→51.89, ACC 54.34→54.54; paint slice GAP⁻ 70.90→68.63 — every
+delta at/below noise. **Caveats:** single seed, 148 photos (fold halves spread up to 6 pts — sensor
+70.41/76.33), one strength schedule (p=0.5, mild–moderate ranges).
+
+**Standalone write-up: [`experiments/phone-photo-augmentation/`](experiments/phone-photo-augmentation/README.md).**
+
 ## How to evaluate any model (the reusable recipe)
 ```bash
 # GPU job: extract MS descriptors (original studio DB + real queries) then full-grid + paintings eval
@@ -320,6 +351,7 @@ sbatch --job-name=met-fteval-<name> slurm/extract_eval_ft.slurm <combined|synth>
 - **EXP-6** (DINOv3 backbone + geometric re-rank): `scripts/build_dinov3_pkl.py`, `scripts/extract_dino_ckpt.py`, `scripts/patchmatch_rerank.py`, `scripts/rerank_confidence_fusion.py` (`slurm/eval_dinov3.slurm`, `slurm/rerank_fusion.slurm`, `slurm/ftdino.slurm`, `slurm/eval_dino_ft.slurm`). Run in `.venv-dino`.
 - **EXP-7** (DINOv3 embedding-structure analysis): `scripts/synth_meta.py` (per-folder procedural factors), `scripts/extract_synth_dino.py` (`slurm/extract_synth_dino.slurm`), `scripts/assemble_real_dino.py` + `scripts/analyze_synth_dino.py` (`slurm/analysis_synth_dino.slurm`). Run in `.venv-dino` (+ scikit-learn/matplotlib).
 - **EXP-8** (real↔synth mixing): `scripts/build_paintings_mix_data.py`, `scripts/eval_paintings_closed.py`, `scripts/eval_paintings_cls.py`, `scripts/plot_mixing_report.py` (`slurm/paint_train.slurm`, `slurm/paint_eval.slurm`, `slurm/eval_full.slurm`, `slurm/eval_paint_cls.slurm`, `slurm/eval_paint148.slurm`).
+- **EXP-9** (phone-photo augmentation): phone-artifact transforms + `build_train_transform`/`ARMS` in `code/utils/augmentations.py`, `--aug` flag in `train_contrastive.py`, 4th positional `AUG` in `slurm/paint_train.slurm`, `scripts/plot_phone_aug.py` (montage + results figs).
 - `code/`: faiss→CPU patch, `extract_descriptors.py` weights_only fix, `train_contrastive.py` `--init_weights`.
 - `reference/README.md` — paper targets + method↔`pairs_type` mapping.
 

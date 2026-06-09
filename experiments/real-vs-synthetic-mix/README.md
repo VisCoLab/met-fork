@@ -141,6 +141,10 @@ Dotted lines = the all-real baseline; every scaling point sits far above it.*
    +9), reinforcing the headline. (This went against my prior guess that the "too clean" renders + the
    broken `right upper` view would flatten it immediately — in the closed world they don't.)
 
+> **Follow-up:** [`phone-photo-augmentation/`](../phone-photo-augmentation/README.md) iterates on the
+> best point here (all 24,490 renders) by adding simulated phone-camera artifacts as training
+> augmentation — a clean negative result (mild JPEG ties, everything stronger hurts).
+
 ## How we trained (identical to the paper's model — only the data changes)
 
 Every run uses the **same recipe** as our step-1 reproduction of the paper's best model (*R18-SWSL

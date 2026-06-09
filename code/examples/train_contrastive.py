@@ -10,7 +10,7 @@ from code.networks.SiameseNet import *
 from code.utils.datasets import *
 from code.utils.utils import *
 from code.utils.losses import *
-from code.utils.augmentations import augmentation
+from code.utils.augmentations import augmentation, build_train_transform
 
 
 import torch
@@ -59,7 +59,8 @@ def main():
 	parser.add_argument('--imsize', default=500, type=int) #image size to train on
 	parser.add_argument('--resume', default=None, type=str) #resume training from a given checkpoint
 	parser.add_argument('--init_weights', default=None, type=str) #fine-tune: load weights only from a checkpoint, fresh optimizer/schedule
-	parser.add_argument('--pairs_type', default='sim_siam_pos+new_neg', type=str) 
+	parser.add_argument('--pairs_type', default='sim_siam_pos+new_neg', type=str)
+	parser.add_argument('--aug', default='base', type=str) #train-time augmentation arm (code.utils.augmentations.ARMS): base|jpeg|blur|sensor|phoneall
 	parser.add_argument('--emb_proj', action='store_true') #if the backbone will also have an FC layer
 	parser.add_argument('--pca', action='store_true') #additionaly initialize FC layer with pca
 	parser.add_argument('--lora', action='store_true') #DINOv3: train LoRA adapters (else head-only: frozen backbone, train projector)
@@ -96,10 +97,11 @@ def main():
 	if args.emb_proj: checkpoint_path += "_emb_proj"
 	if args.pretrained: checkpoint_path += "_pretrained"
 	if args.seed is not None: checkpoint_path += "_seed:_" + str(args.seed)
+	if args.aug != "base": checkpoint_path += "_aug:_" + args.aug
 
 	checkpoint_path = os.path.join(args.directory,checkpoint_path)
 
-	transform_train = augmentation("augment_train",args.imsize)
+	transform_train = build_train_transform(args.imsize,args.aug)
 	transform_inference = augmentation("augment_inference")
 	
 	train_root = args.info_dir
