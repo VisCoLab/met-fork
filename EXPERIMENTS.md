@@ -4,7 +4,7 @@ Running lab notebook: what we've done, the exact settings, results, and how to c
 Goal: beat the paper's best single model (**R18-SWSL Con-Syn+Real-closest, GAP 36.1**) by adding a
 synthetic gallery phone-photo dataset (+ a new method). Plan & targets-to-beat in `reference/README.md`.
 
-_Last updated: 2026-06-07._
+_Last updated: 2026-06-09._
 
 ## Status snapshot
 
@@ -77,22 +77,24 @@ Step-1 model, reuse **K=7, τ=50**; painting set = the committed **148** queries
 **Takeaway:** paintings recognized markedly better than the average Met query (ACC 69% vs 55%) — the tractable, high-value subset. This is the paintings baseline steps 3–4 must beat.
 
 ### EXP-3 — step 3, synthetic gallery images as queries ✅ (with caveat)
-Step-1 model; synthetic renders as queries vs the 397k studio DB (correct = source Met class). Recall@k. `slurm/synth_eval.slurm` (`scripts/extract_synthetic.py` → `scripts/eval_synthetic_retrieval.py`).
+Step-1 model; the 24,760 synthetic renders as queries (correct = source Met class), scored the paper's way — **GAP / GAP⁻ / ACC** + **recall@k**, per camera angle — against **two databases**: **(A)** the full 397k studio DB and **(B)** a paintings-only DB (12,403 photos / 4,898 `Classification=="Paintings"` classes). GAP borrows the 18,316 real distractors (open-set); GAP⁻ excludes them (= closed-world GAP); R@1 == ACC. `slurm/synth_eval.slurm` (`scripts/extract_synthetic.py` → `eval_synthetic_retrieval.py` recall@k / `eval_synthetic_gap.py` Table A GAP / `eval_painting_db.py` Table B).
 
-| angle | N | R@1 | R@5 | R@10 |
-|---|--:|--:|--:|--:|
-| ALL angles | 24,760 | 36.93 | 43.97 | 46.81 |
-| left upper | 4,952 | 75.85 | 83.10 | 85.20 |
-| front | 4,952 | 64.84 | 74.64 | 78.68 |
-| right bottom | 4,952 | 21.95 | 31.10 | 34.77 |
-| left bottom | 4,952 | 20.62 | 28.55 | 31.91 |
-| right upper | 4,952 | 1.41 | 2.48 | 3.49 |
+**(A) full 397k studio DB:**
 
-Restricting synthetic queries to the committed painting classes (`Classification=="Paintings"`) gives the same per-angle picture, a couple of points higher — the well-framed views dominate.
+| angle | N | GAP | GAP⁻ | ACC | R@1 | R@5 | R@10 |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| ALL angles | 24,760 | 31.42 | 33.69 | 36.93 | 36.93 | 43.97 | 46.81 |
+| left upper | 4,952 | 65.49 | 74.72 | 75.85 | 75.85 | 83.10 | 85.20 |
+| front | 4,952 | 54.54 | 62.55 | 64.84 | 64.84 | 74.64 | 78.68 |
+| right bottom | 4,952 | 9.58 | 16.23 | 21.95 | 21.95 | 31.10 | 34.77 |
+| left bottom | 4,952 | 9.57 | 15.43 | 20.62 | 20.62 | 28.55 | 31.91 |
+| right upper | 4,952 | 0.02 | 0.09 | 1.41 | 1.41 | 2.48 | 3.49 |
+
+**(B) paintings-only DB** (12,403 / 4,898 cls; synthetic queries = the 24,490 in-DB renders): uniformly easier — all-angles ACC 36.93→**45.15**, front 64.84→**78.99**; the real painting queries rise to GAP⁻ 71.48 / ACC 72.30. Full per-angle Table B in the write-up. **Not** comparable to (A) or the paper's 36.1.
 
 ⚠️ **Camera-framing artifact, not a clean domain result.** Verified by viewing renders: `right upper` is edge-on/grazing (painting a barely-visible sliver → 1.41%); `left upper`/`front` are well-framed (65–76% R@1). So the per-angle spread tracks framing, and "all angles" 36.93 is dragged down by the broken views. **Cross-check:** the well-framed synthetic **front R@1 64.84** approaches **step-2 real-photo ACC 69.59** — a well-framed render is about as recognizable as a real photo. **Action:** fix the `right upper` (and `*bottom`) camera poses + regenerate, then re-run for a clean per-angle measurement.
 
-**Standalone write-up: [`experiments/renders-as-queries/`](experiments/renders-as-queries/README.md)** — re-ran as job 7342800 (`slurm/synth_eval.slurm`, ~7 min H100); numbers reproduced exactly. Every number traces to `data/descriptors/synthetic/retrieval_summary.json` (new JSON dump added to `eval_synthetic_retrieval.py`).
+**Standalone write-up: [`experiments/renders-as-queries/`](experiments/renders-as-queries/README.md)** — recall@k re-ran as job 7342800 (`slurm/synth_eval.slurm`, ~7 min H100), GAP/GAP⁻/ACC as jobs 7342973 (full DB) / 7342987 (paint DB); numbers reproduced exactly. Numbers trace to `data/descriptors/synthetic/{retrieval_summary,gap_summary,painting_db_summary}.json`.
 
 ### EXP-4 — step 4, train/fine-tune WITH synthetic data ✅
 Question: does adding the synthetic gallery data to training improve recognition of **real painting photos** (step-2 set) without hurting the rest? Eval DB stays the original studio set → directly comparable.
@@ -238,6 +240,38 @@ space (**0.62** from studio); per-view cos-to-source bottoms out exactly where E
 eval's train-fit PCAw); light randomization not recoverable from `metadata.json`; mid-view cos-to-source
 doesn't perfectly track R@1 (retrievability = *discriminability*, not raw similarity; EXP-3 used R18).
 
+### EXP-8 — real↔synthetic training mix for paintings (closed-world) ✅
+Train the painting recognizer on a fixed **12,403-image** budget, varying the **real:synthetic** blend
+100:0→0:100 (6 runs, identical step-1 recipe, only the data changes); eval always on the **real** painting
+test set, two ways — a **closed painting world** (search only the 12,403 painting photos) and the **full
+397k benchmark**. `scripts/build_paintings_mix_data.py` → `slurm/paint_train.slurm`/`slurm/paint_eval.slurm`
+(closed, K/τ via 2-fold CV on the 148 since val=1) + `slurm/eval_full.slurm`/`slurm/eval_paint_cls.slurm`
+(full; painting slice at fixed K=7/τ=50).
+
+| mix (real:synth) | Paint GAP⁻ (closed) | Paint ACC (closed) | GAP (full) | GAP⁻ (full) | ACC (full) | Paint GAP⁻ (full) |
+|---|--:|--:|--:|--:|--:|--:|
+| 100:0 (all real) | 67.18 | 70.27 | 28.83 | 49.08 | 52.14 | 61.83 |
+| 80:20 | 70.56 | 72.97 | 30.23 | 50.03 | 52.84 | 66.09 |
+| 60:40 | 70.65 | 72.30 | 31.15 | 50.60 | 53.34 | 67.22 |
+| 40:60 | 71.37 | 72.97 | 30.38 | 50.74 | 53.54 | 67.92 |
+| 20:80 | 71.24 | 72.30 | 30.85 | 50.92 | 53.64 | 69.62 |
+| **0:100 (all synth)** | **72.47** | **73.65** | **31.32** | **51.47** | **54.04** | **70.04** |
+| *ref: all-real-data model (full 397k)* | *71.62* | *72.30* | *35.97* | *52.14* | *54.64* | *67.86* |
+
+**Synth-only data scaling** (0% real, lifting the 12,403 cap): closed-world GAP⁻ 72.47→73.73→74.39→**75.09**
+at 1×/1.25×/1.5×/all-24,490 renders (no plateau ⇒ data-limited); the full-benchmark painting slice
+plateaus (70.04→70.81→70.93→70.90).
+
+**Finding:** synthetic gallery renders are **better training material than real studio photos** for this
+test — **synth-only (0% real) is the best of the six**, beating the all-real baseline everywhere and the
+**full-data 397k model on paintings** (closed 72.47 vs 71.62; full-paint GAP⁻ 70.04 vs 67.86) with ~32×
+less data and no real painting photo. The win is painting-specific: painting-only training can't reject
+the 18k distractors, so full **GAP** stays below the full-data model (31.32 vs 35.97). **Caveats:**
+closed-world numbers are **not** comparable to the paper's GAP 36.1 (12k vs 397k DB); 148 test / val=1
+(≤~2-pt diffs are noise — trust the all-real→all-synth jump + monotone trend).
+
+**Standalone write-up: [`experiments/real-vs-synthetic-mix/`](experiments/real-vs-synthetic-mix/README.md).**
+
 ## How to evaluate any model (the reusable recipe)
 ```bash
 # GPU job: extract MS descriptors (original studio DB + real queries) then full-grid + paintings eval
@@ -264,10 +298,12 @@ sbatch --job-name=met-fteval-<name> slurm/extract_eval_ft.slurm <combined|synth>
 **Tracked (in git):**
 - SLURM jobs: `slurm/train.slurm` (step 1), `slurm/extract_eval.slurm` (eval step 1), `slurm/finetune.slurm` (fine-tune combined/synth), `slurm/train_synth.slurm` (from-scratch +synth), `slurm/extract_eval_ft.slurm` (eval fine-tuned), `slurm/synth_eval.slurm` (step 3).
 - `scripts/eval_fullgrid.py` — full-K-grid eval (every model). `scripts/eval_paintings.py` — paintings-subset eval.
-- `scripts/extract_synthetic.py` + `scripts/eval_synthetic_retrieval.py` — step-3 synthetic retrieval.
+- `scripts/extract_synthetic.py` + `scripts/eval_synthetic_retrieval.py` (recall@k) + `scripts/eval_synthetic_gap.py` + `scripts/eval_painting_db.py` — EXP-3 synthetic retrieval (recall@k + GAP/GAP⁻/ACC; full DB + paintings-only DB).
 - `scripts/count_paintings.py` — painting counts (Met Open Access join). `scripts/build_finetune_data.py` — augmented manifests + image-root.
 - `scripts/smoke_gpu.py` — GPU + CPU-faiss env smoke test.
+- **EXP-6** (DINOv3 backbone + geometric re-rank): `scripts/build_dinov3_pkl.py`, `scripts/extract_dino_ckpt.py`, `scripts/patchmatch_rerank.py`, `scripts/rerank_confidence_fusion.py` (`slurm/eval_dinov3.slurm`, `slurm/rerank_fusion.slurm`, `slurm/ftdino.slurm`, `slurm/eval_dino_ft.slurm`). Run in `.venv-dino`.
 - **EXP-7** (DINOv3 embedding-structure analysis): `scripts/synth_meta.py` (per-folder procedural factors), `scripts/extract_synth_dino.py` (`slurm/extract_synth_dino.slurm`), `scripts/assemble_real_dino.py` + `scripts/analyze_synth_dino.py` (`slurm/analysis_synth_dino.slurm`). Run in `.venv-dino` (+ scikit-learn/matplotlib).
+- **EXP-8** (real↔synth mixing): `scripts/build_paintings_mix_data.py`, `scripts/eval_paintings_closed.py`, `scripts/eval_paintings_cls.py`, `scripts/plot_mixing_report.py` (`slurm/paint_train.slurm`, `slurm/paint_eval.slurm`, `slurm/eval_full.slurm`, `slurm/eval_paint_cls.slurm`, `slurm/eval_paint148.slurm`).
 - `code/`: faiss→CPU patch, `extract_descriptors.py` weights_only fix, `train_contrastive.py` `--init_weights`.
 - `reference/README.md` — paper targets + method↔`pairs_type` mapping.
 
