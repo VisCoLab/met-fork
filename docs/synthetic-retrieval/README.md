@@ -81,27 +81,31 @@ are blank — the comparable recognition axis is the paper's **ACC** (real top-1
 | **Original paper** — R18-SWSL Con-Syn+Real-closest | 36.1 | 52.4 | 55.0 | — | — | — |
 | **Ours** — step-1 reproduction | 35.97 | 52.14 | 54.64 | **36.93** | **43.97** | **46.81** |
 
-> GAP / GAP⁻ / ACC are on the **1,003 real Met test queries** (GAP also ranks the 18,316 distractors);
-> R@1/5/10 are on the **24,760 synthetic renders** (no distractors → GAP is undefined here). The two
-> blocks use **different query sets**, so this is **not** a like-for-like comparison — it just places the
-> synthetic retrieval beside the model's real-benchmark standing. Our reproduction matches the paper on
-> the real benchmark (GAP 35.97 vs 36.1).[^authors]
+> GAP / GAP⁻ / ACC here are on the **1,003 real Met test queries** (paper protocol; GAP ranks the 18,316
+> distractors); R@1/5/10 are on the **24,760 synthetic renders**. Different query sets — the row places
+> synthetic retrieval *beside* the real-benchmark standing, not against it. (The renders can also be given
+> GAP/GAP⁻/ACC by borrowing those same distractors — see the per-view table just below and §3.) Our
+> reproduction matches the paper on the real benchmark (GAP 35.97 vs 36.1).[^authors]
 
-**By camera view** (our synthetic renders, sorted best→worst R@1):
+**By camera view** — now the synthetic renders scored *exactly* like the real benchmark (kNN K=7/τ=50, GAP
+against the same 18,316 real distractors, GAP⁻/ACC over the renders). These GAP/GAP⁻/ACC are for the
+**synthetic renders as queries** (≠ the real-query GAP/ACC in the table above). Sorted best→worst:
 
-| camera view | N | R@1 | R@5 | R@10 |
-|---|--:|--:|--:|--:|
-| **ALL angles** | 24,760 | **36.93** | **43.97** | **46.81** |
-| left upper | 4,952 | 75.85 | 83.10 | 85.20 |
-| front | 4,952 | 64.84 | 74.64 | 78.68 |
-| right bottom | 4,952 | 21.95 | 31.10 | 34.77 |
-| left bottom | 4,952 | 20.62 | 28.55 | 31.91 |
-| **right upper** | 4,952 | **1.41** | 2.48 | 3.49 |
+| camera view | N | GAP | GAP⁻ | ACC | R@1 | R@5 | R@10 |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| **ALL angles** | 24,760 | **31.42** | **33.69** | **36.93** | **36.93** | **43.97** | **46.81** |
+| left upper | 4,952 | 65.49 | 74.72 | 75.85 | 75.85 | 83.10 | 85.20 |
+| front | 4,952 | 54.54 | 62.55 | 64.84 | 64.84 | 74.64 | 78.68 |
+| right bottom | 4,952 | 9.58 | 16.23 | 21.95 | 21.95 | 31.10 | 34.77 |
+| left bottom | 4,952 | 9.57 | 15.43 | 20.62 | 20.62 | 28.55 | 31.91 |
+| **right upper** | 4,952 | **0.02** | **0.09** | **1.41** | **1.41** | 2.48 | 3.49 |
 
-**Plain reading:** the overall 36.9% is an *average over wildly different views*. The two well-framed
-views (`left upper`, `front`) recognize the right painting most of the time; the foreshortened `*bottom`
-views land near 20%; and `right upper` is essentially a coin-flip away from zero. The spread is **~54×**
-between best and worst view — almost entirely a framing artifact, not a property of the paintings (see §4).
+**Plain reading:** every metric tells the same story — the overall numbers are an *average over wildly
+different views*. The two well-framed views (`left upper`, `front`) recognize the right painting most of the
+time (GAP⁻ 75 / 63, ACC 76 / 65); the foreshortened `*bottom` views land near 20% ACC; and `right upper`
+collapses to essentially zero (GAP⁻ 0.09, ACC 1.41). The spread is **~54×** on ACC/R@1 and starker still on
+GAP — almost entirely a framing artifact, not a property of the paintings (see §4). (ACC == R@1 throughout:
+the τ=50 kNN vote follows the single nearest neighbour.)
 
 ---
 
