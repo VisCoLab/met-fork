@@ -14,7 +14,7 @@ _Last updated: 2026-06-07._
 | 1 | Reproduce best model from scratch (full benchmark) | ✅ **GAP 35.97** / 52.14 / 54.64 (= paper 36.1) |
 | 2 | Same model, test only on paintings | ✅ strict GAP⁻ 67.81 / ACC 69.36 |
 | 3 | Same model, retrieve synthetic gallery images | ✅ done — exposes a **camera-rig framing bug** (EXP-3) |
-| 4 | Train/fine-tune **with synthetic data**, eval on real paintings | 🟡 synth-only FT done (big gain, confounded); combined FT + clean from-scratch+synth **running** |
+| 4 | Train/fine-tune **with synthetic data**, eval on real paintings | ✅ clean **from-scratch +synth = GAP 38.15** (+2.18 over step 1, +3.47 paint ACC), **beats paper 36.1** — synthetic data helps on its own |
 | 5 | New method | 🟡 **DINOv3 + geometric re-rank** (EXP-6): ViT-L+gate **GAP 53.07** (+4.9 over DINOv3 ZS, both GAP/GAP⁻ up); cross-domain mining (additional exp) running (7332307) |
 
 ## Headline results
@@ -26,8 +26,8 @@ All eval'd identically: multi-scale descriptors, **original 397k studio DB**, re
 | Authors' descriptors | 36.10 | 52.41 | 55.03 | — | — |
 | **Step 1 — ours, no synthetic** | 35.97 | 52.14 | 54.64 | 67.81 | 69.36 |
 | Synth-only FT *(confounded)* | **38.61** | 55.59 | 57.83 | **72.79** | **73.99** |
-| Combined FT | _running (7330025)_ | | | | |
-| **From-scratch +synth** *(clean A/B)* | _running (7330059)_ | | | | |
+| Combined FT *(confounded)* | 37.38 | 53.99 | 56.33 | 70.20 | 71.68 |
+| **From-scratch +synth** *(clean A/B)* | **38.15** | **55.49** | **58.23** | **71.09** | **72.83** |
 
 ## Environment (proven, on PCSS Eagle)
 
@@ -93,15 +93,15 @@ Restricting to the step-2 painting test classes (strict 138 / broad 176) gives t
 
 ⚠️ **Camera-framing artifact, not a clean domain result.** Verified by viewing renders: `right upper` is edge-on/grazing (painting a barely-visible sliver → 1.41%); `left upper`/`front` are well-framed (65–76% R@1). So the per-angle spread tracks framing, and "all angles" 36.93 is dragged down by the broken views. **Cross-check:** strict-painting synthetic **front R@1 68.84 ≈ step-2 real-photo ACC 69.36** — a well-framed render is about as recognizable as a real photo. **Action:** fix the `right upper` (and `*bottom`) camera poses + regenerate, then re-run for a clean per-angle measurement.
 
-### EXP-4 — step 4, train/fine-tune WITH synthetic data 🟡
+### EXP-4 — step 4, train/fine-tune WITH synthetic data ✅
 Question: does adding the synthetic gallery data to training improve recognition of **real painting photos** (step-2 set) without hurting the rest? Eval DB stays the original studio set → directly comparable.
 
 | Run | Recipe | Data | Job(s) | Status |
 |---|---|---|---|---|
 | Baseline | from-SWSL, 10 ep | studio only | (step 1) | ✅ GAP 35.97 |
 | Synth-only FT | fine-tune ep10, 5 ep @1e-7 | synthetic only | train 7330026 / eval 7330036 | ✅ |
-| Combined FT | fine-tune ep10, 5 ep @1e-7 | studio + synthetic | 7330025 | 🟡 running |
-| **From-scratch +synth** | from-SWSL, 10 ep | studio + synthetic | 7330059 | 🟡 running — **clean A/B vs step 1** |
+| Combined FT | fine-tune ep10, 5 ep @1e-7 | studio + synthetic | train 7330025 / eval 7332888 | ✅ GAP 37.38 |
+| **From-scratch +synth** | from-SWSL, 10 ep | studio + synthetic | train 7330059 / eval 7342026 | ✅ **GAP 38.15** — clean A/B vs step 1 |
 
 Fine-tunes load epoch-10 weights via **`--init_weights`** (added to `train_contrastive.py`) with a fresh optimizer @ **LR 1e-7** — a literal `--resume` runs at the decayed **1e-8 ≈ frozen** (no-op). `finetune.slurm <combined|synth>`; from-scratch is `train_synth.slurm`. Eval: `extract_eval_ft.slurm <variant>`.
 
@@ -115,7 +115,29 @@ Fine-tunes load epoch-10 weights via **`--init_weights`** (added to `train_contr
 
 (broad paintings: GAP⁻ 65.92→70.41, ACC 67.42→71.49.)
 
-**Finding:** synth-only fine-tuning improved *everything*, including **non-paintings** (+2.6 full GAP) — surprising; the prediction was forgetting. Because non-paintings also rose, it's not pure forgetting — the diverse renders taught **transferable lighting/viewpoint/glass invariance** that helps real photos broadly. **⚠️ Confound:** we re-warmed LR (1e-8→1e-7) + trained 5 extra epochs, so part of the gain may be extra training, not synthetic. **Resolution:** the **from-scratch +synth** run (identical 10-epoch recipe to step-1, only synthetic added) is the confound-free A/B — that's the headline number to report; it also removed the need for a separate control run.
+**Combined FT result** (studio + synthetic together; best K=5, τ=100):
+
+| | Full GAP | GAP⁻ | ACC | Paint GAP⁻ (strict) | Paint ACC (strict) |
+|---|--:|--:|--:|--:|--:|
+| Baseline (step 1) | 35.97 | 52.14 | 54.64 | 67.81 | 69.36 |
+| **Combined FT** | 37.38 | 53.99 | 56.33 | 70.20 | 71.68 |
+| Δ | +1.41 | +1.85 | +1.69 | +2.39 | +2.32 |
+
+(broad paintings: GAP⁻ 69.31, ACC 70.59.) Combined FT gains *less* than synth-only (+1.4 vs +2.6 full
+GAP) — plausibly because mixing 397k studio + 25k synthetic dilutes the synthetic signal per epoch.
+Both FTs share the same LR-rewarm + extra-epochs confound, so neither is the headline.
+
+**From-scratch +synth result — the clean A/B** (identical 10-epoch recipe to step 1, only +synthetic — no LR rewarm, no extra epochs; best K=5, τ=50):
+
+| | Full GAP | GAP⁻ | ACC | Paint GAP⁻ (strict) | Paint ACC (strict) |
+|---|--:|--:|--:|--:|--:|
+| Baseline (step 1) | 35.97 | 52.14 | 54.64 | 67.81 | 69.36 |
+| **From-scratch +synth** | **38.15** | **55.49** | **58.23** | **71.09** | **72.83** |
+| Δ | **+2.18** | **+3.35** | **+3.59** | **+3.28** | **+3.47** |
+
+(broad paintings: GAP⁻ 65.92→69.90, ACC 67.42→71.49.)
+
+**Finding (✅ confound resolved):** synth-only fine-tuning improved *everything*, including **non-paintings** (+2.6 full GAP) — surprising; the prediction was forgetting. Because non-paintings also rose, it's not pure forgetting — the diverse renders taught **transferable lighting/viewpoint/glass invariance** that helps real photos broadly. The two FTs re-warmed LR (1e-8→1e-7) + trained 5 extra epochs, so part of their gain could have been extra training, not synthetic. **The clean A/B settles it:** the from-scratch +synth run (identical 10-epoch step-1 recipe, only +synthetic) still gains **+2.18 full GAP / +3.59 ACC / +3.47 paint ACC** over step 1, landing at **GAP 38.15** — within 0.5 of the confounded synth-only FT (38.61). So the lift is **real and attributable to the synthetic data itself**, not to extra training, and it clears the paper's best single model (36.1). This is the headline result for contribution 1.
 
 ### EXP-5 — step 5, new method 🟡
 **Additional experiment — cross-domain pair mining.** New `--pairs_type cross_domain_pos+new_neg`
